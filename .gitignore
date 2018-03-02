@@ -11,6 +11,7 @@ boneyard/
 
 #runtime
 ssh/
+tmp/
 
 # macOS
 .DS_Store

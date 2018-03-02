@@ -9,6 +9,8 @@ from cryptography import x509
 from cryptography.x509.oid import NameOID
 from cryptography.hazmat.primitives import hashes
 import os
+import hashlib
+
 
 # Generate Private Key
 def generateKey(keyName, path=None):
@@ -23,6 +25,16 @@ def generateKey(keyName, path=None):
 		    f.write(publicKeyPEM(private_key.public_key()))
 	
 	return private_key
+
+def deleteKey(keyName, path):
+	try:
+		os.remove(path+'/'+keyName)
+		os.remove(path+'/'+keyName+".pub")
+	except Exception as e:
+		pass
+
+def keyExists(keyName, path):
+	return os.path.isfile(path+'/'+keyName) 
 
 def privateKeyPEM(private_key):
 	return private_key.private_bytes(
@@ -52,6 +64,10 @@ def generateCSR(key, csrName, path=None):
 		    f.write(csr.public_bytes(serialization.Encoding.PEM))
 	return csr
 
+# Generate a hash of the public key for use as deviceID
+def publicKeyHash(public_key):
+	return hashlib.sha256(publicKeyPEM(public_key)).hexdigest()
+
 def loadPrivateKey(name, path):
 	with open(path+'/'+name, "rb") as key_file:
 	    key = serialization.load_pem_private_key(
@@ -71,7 +87,7 @@ def loadPublicKey(name, path):
 
 if __name__ == '__main__':
 
-	keyPath = '../ssh'
+	keyPath = '../../ssh'
 	if not os.path.exists(keyPath):
 	    os.makedirs(keyPath)
 
@@ -85,3 +101,7 @@ if __name__ == '__main__':
 	# Read keys back in from PEM files
 	testKey = loadPrivateKey("wifiKey", keyPath)
 	testKeyPub = loadPublicKey("wifiKey", keyPath)
+
+	deviceID = hashlib.sha256(publicKeyPEM(public_key)).hexdigest()
+
+	print deviceID
