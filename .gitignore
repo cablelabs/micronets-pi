@@ -9,6 +9,9 @@ __pycache__/
 # scraps
 boneyard/
 
+#runtime
+ssh/
+
 # macOS
 .DS_Store
 
@@ -20,8 +23,6 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
 parts/
 sdist/
 var/
