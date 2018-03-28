@@ -14,11 +14,24 @@ from lib.wpa_supplicant import *
 keyPath = '../ssh'
 keyName = 'wifiKey'
 csrName = 'wifiCSR'
+UID = None
 
 if not os.path.exists(keyPath):
     os.makedirs(keyPath)
 
-def onboardDevice(newKey):
+def cancelOnboard():
+	global UID
+
+	headers = {'content-type': 'application/json'}
+	body = {'UID': UID}
+	data = json.dumps(body)
+	response = requests.post('https://alpineseniorcare.com/micronets/device/cancel', data = data, headers = headers)
+
+	print "cancel: {}".format(json.dumps(reqBody))
+
+
+def onboardDevice(newKey, callback):
+	global UID
 
 	if newKey == True:
 		deleteKey(keyName, keyPath)
@@ -34,7 +47,11 @@ def onboardDevice(newKey):
 	public_key = private_key.public_key()
 
 	# Advertise our device
-	data = open('../config/device.json').read()
+	#cwd = os.path.dirname(os.path.realpath(__file__))
+	#print "cwd: {}".format(cwd)
+	fileDir = os.path.dirname(os.path.realpath('__file__'))
+	filename = os.path.join(fileDir, '../config/device.json')
+	data = open(filename).read()
 
 	# Replace UID with hash of public key
 	device = json.loads(data)
@@ -42,10 +59,21 @@ def onboardDevice(newKey):
 	device['MAC'] = ':'.join(("%012X" % get_mac())[i:i+2] for i in range(0, 12, 2))
 	data = json.dumps(device)
 
+	# Save in case we cancel
+	UID = device['UID']
+
 	print "advertising device:\n{}".format(data)
 
 	headers = {'content-type': 'application/json'}
 	response = requests.post('https://alpineseniorcare.com/micronets/device/advertise', data = data, headers = headers)
+
+	if response.status_code == 204:
+		callback("canceled")
+		return
+	elif response.status_code != 200:
+		callback("error: {}".format(response.status_code))
+		return
+
 
 	csrt = response.json()
 	# TODO: keyType and keyBits should be separated in CSRT, and CSRT should include C, ST, L, O, OU, etc
@@ -70,6 +98,9 @@ def onboardDevice(newKey):
 
 	headers = {'content-type': 'application/json','authorization': csrt['token']}
 	response = requests.post('https://alpineseniorcare.com/micronets/device/cert', data = data, headers = headers)
+	if response.status_code != 200:
+		callback("error: {}".format(response.http_status))
+		return
 
 	# Parse out reply and set up wpa configuration
 	reply = response.json()
@@ -93,6 +124,19 @@ def onboardDevice(newKey):
 	data = json.dumps(reqBody)
 
 	response = requests.post('https://alpineseniorcare.com/micronets/device/pair-complete', data = data, headers = headers)
+	if response.status_code != 200:
+		callback("error: {}".format(response.http_status))
+		return
+
+	callback('complete')
+
+# Remove private key
+def removeKey():
+	deleteKey(keyName, keyPath)
+
+# Remove subscriber config
+def resetDevice():
+	wpa_reset()
 
 if __name__ == '__main__':
 

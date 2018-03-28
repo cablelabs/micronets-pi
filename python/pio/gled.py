@@ -6,12 +6,8 @@ import sys
 import time
 import RPi.GPIO as GPIO
 
-if __name__ == '__main__':
-    from interval import IntervalTimer
-    from syslogger import SysLogger
-else:
-    from utils.interval import IntervalTimer
-    from utils.syslogger import SysLogger
+from utils.interval import IntervalTimer
+from utils.syslogger import SysLogger
 
 logger = SysLogger().logger()
 
@@ -22,7 +18,9 @@ class GLed(object):
         ## Instance Variables
         self.pin = pin
         self.timer = None
-        self.isBlink = False;
+        self.isBlink = False
+        self.countDown = 0
+        self.callback = None
 
         GPIO.setmode(GPIO.BCM)
         GPIO.setup(self.pin, GPIO.OUT, initial=GPIO.LOW)
@@ -34,8 +32,19 @@ class GLed(object):
 
         GPIO.output(self.pin, self.isBlink)
 
-    def blink(self, interval):
+        if self.countDown > 0:
+            self.countDown = self.countDown - 1
+            if self.countDown == 0:
+                self.off()
+                if self.callback != None:
+                    self.callback()
+
+    def blink(self, interval, count = 0, callback = None):
+        if self.timer != None:
+            self.timer.stop()
         #print "starting blink timer {}: {}".format(self.pin, interval)
+        self.countDown = count * 2
+        self.callback = callback
         self.timer = IntervalTimer(interval, self.timer_callback).start()
 
     def on(self):
@@ -53,9 +62,11 @@ if __name__ == '__main__':
     led = GLed(25)
 
     i = 0
+    i = -1
+    led.on()
 
     while True:
-        i = (i + 1) % 4
+        #i = (i + 1) % 4
         
         if i == 0 or i == 2:
             led.off()

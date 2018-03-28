@@ -3,11 +3,7 @@
 HOST='protomed1'
 if [ ! -z $1 ]; then HOST=$1; fi
 
-rsync --verbose --force --rsync-path="sudo rsync" ~/github/micronets-pi/*.py $HOST:/usr/local/bin/protomed/
-rsync --verbose --force --rsync-path="sudo rsync" --recursive ~/github/micronets-pi/data/* $HOST:/usr/local/bin/protomed/data/
-rsync --verbose --force --rsync-path="sudo rsync" --recursive ~/github/pythonlib/utils/*.py $HOST:/usr/local/bin/protomed/utils/
-#rsync --verbose --force --rsync-path="sudo rsync" ~/github/micronets-pi/protomed protomed1:/etc/init.d/
-
-
-#rsync --verbose --rsync-path="sudo rsync" ~/github/micronets-pi/myservice.py protomed1:/usr/local/bin/myservice/
-#rsync --verbose --rsync-path="sudo rsync" ~/github/micronets-pi/myservice protomed1:/etc/init.d/
+rsync --verbose --force --rsync-path="sudo rsync" --recursive ~/github/micronets-pi/python $HOST:/etc/micronets/
+rsync --verbose --force --rsync-path="sudo rsync" --recursive ~/github/micronets-pi/config $HOST:/etc/micronets/
+rsync --verbose --force --rsync-path="sudo rsync" --recursive ~/github/micronets-pi/networks $HOST:/etc/micronets/
+rsync --verbose --force --rsync-path="sudo rsync" ~/github/micronets-pi/install/init.d/protomed $HOST:/etc/init.d/

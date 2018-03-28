@@ -4,102 +4,63 @@
 import platform, sys, time
 import RPi.GPIO as GPIO
 
-if __name__ == '__main__':
-    from interval import IntervalTimer
-    from syslogger import SysLogger
-else:
-    from utils.interval import IntervalTimer
-    from utils.syslogger import SysLogger
+from utils.interval import IntervalTimer
+from utils.syslogger import SysLogger
 
 logger = SysLogger().logger()
 
 class GButton(object):
 
-    # class constants for callbacks
-    DOWN = 0
-    UP = 1
-    CLICK = 2
-    LONGPRESS = 3
-
     def __init__(self, pin):
 
         ## Instance Variables
         self.pin = pin
-        self.longDelay = 5.0
-        self.timer = None
-        self.timer_incr = .2
-        self.count = 0
-        self.canclick = False
-        self.user_callbacks = [None, None, None, None]
+        self.user_callback = None
 
         GPIO.setmode(GPIO.BCM)
-        GPIO.setup(self.pin, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
-        #GPIO.add_event_detect(self.pin, GPIO.BOTH)
-        #GPIO.add_event_callback(self.pin, self.button_callback)
-        GPIO.add_event_detect(self.pin, GPIO.BOTH, self.button_callback, bouncetime=50)
+        GPIO.setup(self.pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+        GPIO.add_event_detect(self.pin, GPIO.RISING, self.button_callback, bouncetime=50)
 
-    # timer callback for LONGPRESS
-    def timer_callback(self):
-        self.count += self.timer_incr;
-        if self.count >= self.longDelay:
-            self.count = 0
-            self.canclick = False
-            self.timer.stop()
-            self.user_callbacks[GButton.LONGPRESS]()
-        #else: 
-            #print "Timer: {}".format(self.count)
-
-    def set_callback(self, callback_type, func, delay=None):
-        self.user_callbacks[callback_type] = func
-        if (callback_type == GButton.LONGPRESS and delay != None):
-            self.longDelay = delay
+    def set_callback(self, func):
+        self.user_callback = func
 
     # local callback for button primitives
     def button_callback(self, channel):
+
         pressed = GPIO.input(self.pin)
         if (pressed):
-            self.canclick = True
-            if self.user_callbacks[GButton.DOWN]:
-                self.user_callbacks[GButton.DOWN]()
-
-            if self.user_callbacks[GButton.LONGPRESS]:
-                self.count = 0
-                self.timer = IntervalTimer(self.timer_incr, self.timer_callback).start()
-
-        else:
-            if self.user_callbacks[GButton.UP]:
-                self.user_callbacks[GButton.UP]()
-                
-            if self.user_callbacks[GButton.CLICK] and self.canclick:
-                self.user_callbacks[GButton.CLICK]()
+            if self.user_callback:
+                self.user_callback()
                     
-            if self.user_callbacks[GButton.LONGPRESS]:
-                self.count = 0
-                self.timer.stop()
-
 if __name__ == '__main__':
-    def callback_down():
-        print "button down"
-    def callback_up():
-        print "button up"
-    def callback_click():
-        print "button click"
-    def callback_longpress():
-        print "button longpress"
+    count7 = 0
+    count22 = 0
 
-    button = GButton(4)
-    button.set_callback(GButton.DOWN, callback_down)
-    button.set_callback(GButton.UP, callback_up)
-    button.set_callback(GButton.CLICK, callback_click)
-    button.set_callback(GButton.LONGPRESS, callback_longpress)
+    def callback_click7():
+        global count7
+        count7 = count7+1
+        print "button7 click: {} Mode: {}".format(count7, GPIO.input(9))
+
+    def callback_click22():
+        global count22
+        count22 = count22+1
+        print "button22 click: {}".format(count22)
+
+    button7 = GButton(7)
+    button7.set_callback(callback_click7)
+
+    button22 = GButton(22)
+    button22.set_callback(callback_click22)
+
+    # Mode switch
+    button9 = GButton(9)
 
     i = 0
 
     # Loop forever, doing something useful hopefully:
     while True:
         i += 1
-        logger.info("Running: " + str(i))
-        time.sleep(2)
+        time.sleep(.05)
 
 
 

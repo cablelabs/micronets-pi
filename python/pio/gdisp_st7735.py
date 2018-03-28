@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 ############################################################
 # AdaFruit st7735 LCD 
 ############################################################
@@ -6,9 +7,13 @@ import time, atexit, sys, random, logging
 import luma.core.render
 from luma.core.sprite_system import framerate_regulator
 from luma.core import cmdline, error
+from PIL import ImageFont
+import os
+#import RPi.GPIO as GPIO
+
 
 if __name__ == '__main__':
-    from syslogger import SysLogger
+    from utils.syslogger import SysLogger
 else:
     from utils.syslogger import SysLogger
 logger = SysLogger().logger()
@@ -37,6 +42,8 @@ class GDisp_st7735(object):
         config.append("--h-offset=1")
         config.append("--v-offset=2")
         config.append("--backlight-active=high")
+        config.append("--rotate=3")
+
 
         args = parser.parse_args(config)
 
@@ -49,6 +56,8 @@ class GDisp_st7735(object):
 
     def __init__(self):
         self.device = self.get_device()
+        with luma.core.render.canvas(self.device) as draw:
+            self.draw = draw
 
     class Ball(object):
         def __init__(self, w, h, radius, color):
@@ -80,8 +89,24 @@ class GDisp_st7735(object):
                            self._x_pos + self._radius, self._y_pos + self._radius), fill=self._color)
 
 
+    # do NOT call before end as it resets GPIO board numbering!! Need a different call to clear screen.
     def clear(self):
-        self.device.cleanup()
+        #self.device.cleanup()
+        with luma.core.render.canvas(self.device) as draw:
+            draw.rectangle(self.device.bounding_box, outline="white", fill="black")
+
+    def setFont(self, path, size, color):
+        self.font = ImageFont.truetype(path, size)
+        self.fontFill = color
+
+    def textOut(self, x, y, text):
+        
+        self.draw.text((x, y), text, font=self.font, fill=self.fontFill)
+
+        #font_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'fonts', 'C&C Red Alert [INET].ttf'))
+        #font2 = ImageFont.truetype(font_path, 12)
+        #with luma.core.render.canvas(self.device) as draw:
+        #    draw.text((x, y), text, font=font2, fill="white")
 
     # Just a screen saver until we layout the UI
     def sprite_loop(self, num_iterations=sys.maxsize):
@@ -111,7 +136,21 @@ class GDisp_st7735(object):
 
 if __name__ == '__main__':
     try:
+        #GPIO.setmode(GPIO.BCM)
+
         display = GDisp_st7735()
-        display.sprite_loop()
+
+        sprite = True 
+        if sprite:
+            display.sprite_loop()
+        else:
+            display.clear()
+            display.setFont("/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf", 16, "white")
+            display.textOut(0, 0, "Micronets")
+            while True:
+                time.sleep(2)
+
     except KeyboardInterrupt:
         pass
+
+
