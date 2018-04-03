@@ -15,6 +15,7 @@ from threading import Timer
 
 import RPi.GPIO as GPIO
 from PIL import ImageFont
+from device_ui import DeviceUI
 
 
 ############################################################
@@ -24,6 +25,8 @@ from PIL import ImageFont
 GPIO.setmode(GPIO.BCM)
 restoring = False
 onboarding = False
+
+display = DeviceUI()
 
 # Demented python scoping.
 context = {'restoring':False, 'onboarding':False}
@@ -48,49 +51,62 @@ buttonOnboard.set_callback(clickOnboard)
 buttonReset = GButton(7)
 buttonReset.set_callback(clickReset)
 
+buttonMode = GButton(9)
+
 # LED pin 25
 
 ledOnboard = GLed(25)
 
 def restore_defaults():
     print "restore defaults"
+    display.clear_messages()
+    display.add_message("Restore Defaults")
+
     ledOnboard.blink(.05, 10, restore_complete)
     restoring = True
     resetDevice()
 
 def restore_complete():
     print "end restore"
+    display.add_message("Restore Complete")
     restoring = False
+    set_state()
 
 def begin_onboard():
     print "begin onboard"
-    #disp.textOut(10, 0, "MICRONETS")
-    #disp.textOut(10, 30, "Onboarding...")
+    display.clear_messages()
+    display.add_message("Begin Onboard")
     ledOnboard.blink(.1)
     context['onboarding'] = True
 
-    # TODO: Read clear private key switch
-    thr = threading.Thread(target=onboardDevice, args=(False, end_onboard,)).start()
-    #onboardDevice(False)
+    # Read clear private key switch
+    newKey = GPIO.input(9)
+    thr = threading.Thread(target=onboardDevice, args=(newKey, end_onboard, status_message,)).start()
+
+def status_message(message):
+    display.add_message(message)
 
 def end_onboard(status):
     print "end onboard: {}".format(status)
-    #disp.textOut(10, 0, "MICRONETS")
-    #disp.textOut(10, 30, "Complete!")
+    display.add_message(status)
     context['onboarding'] = False
-    ledOnboard.off()
+    set_state()
+
+def set_state():
+    if wpa_subscriber_exists():
+        ledOnboard.on()
+    else:
+        ledOnboard.off()
 
 ############################################################
 # LED Display
 ############################################################
 
-disp = GDisp_st7735()
-
 def cleanup():
     print("Cleaning up")
 
     # Clear display
-    disp.clear()
+    display.clear_messages()
 
     # Release GPIO
     GPIO.cleanup()
@@ -107,5 +123,9 @@ atexit.register(cleanup)
 #disp.textOut(20, 0, "Micronets")
 
 # Loop forever, doing something useful hopefully:
+
+# Have green LED reflect subscriber configured status
+set_state()
 while True:
-    time.sleep(2)
+    display.refresh()
+    time.sleep(1)

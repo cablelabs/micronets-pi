@@ -5,8 +5,9 @@ import os
 import glob
 import sys
 import subprocess
+from pathlib import Path
 
-__all__ = ["wpa_reset", "wpa_add_subscriber"]
+__all__ = ["wpa_reset", "wpa_add_subscriber", "wpa_subscriber_exists"]
 
 # exposed methods
 def wpa_reset():
@@ -27,7 +28,10 @@ def wpa_reset():
 	# add default network
 	add_network('default', 0)
 
-
+def wpa_subscriber_exists():
+	certFile = Path("/etc/micronets/networks/subscriber/wifi.crt")
+	return certFile.is_file()
+	
 def wpa_add_subscriber(ssid, ca_cert, wifi_cert, wifi_key, identity):
 
 	# Start with default configuration
@@ -63,7 +67,7 @@ def rm_silent(filename):
 	try:
 	    os.remove(filename)
 	except OSError:
-		print 'failed to remove file: {}'.format(filename)
+		#print 'failed to remove file: {}'.format(filename)
 		pass
 
 def add_network(network, priority):
@@ -102,7 +106,11 @@ if __name__ == '__main__':
 
 
 
+# TODO Need to restart after adding subscriber or resetting to defaults so it will connect to the new network (for demo)
 
+#sudo systemctl daemon-reload
+#sudo systemctl restart dhcpcd
 
+# Or maybe just power cycle.
 
 

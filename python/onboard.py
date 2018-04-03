@@ -3,7 +3,7 @@ import json
 import requests
 from pprint import pprint
 from OpenSSL import crypto, SSL
-import os, sys
+import os, sys, time
 import base64
 from uuid import getnode as get_mac
 
@@ -30,7 +30,7 @@ def cancelOnboard():
 	print "cancel: {}".format(json.dumps(reqBody))
 
 
-def onboardDevice(newKey, callback):
+def onboardDevice(newKey, callback, devlog):
 	global UID
 
 	if newKey == True:
@@ -63,15 +63,16 @@ def onboardDevice(newKey, callback):
 	UID = device['UID']
 
 	print "advertising device:\n{}".format(data)
+	devlog("Advertise Device")
 
 	headers = {'content-type': 'application/json'}
 	response = requests.post('https://alpineseniorcare.com/micronets/device/advertise', data = data, headers = headers)
 
 	if response.status_code == 204:
-		callback("canceled")
+		callback("Onboard canceled")
 		return
 	elif response.status_code != 200:
-		callback("error: {}".format(response.status_code))
+		callback("HTTP Error: {}".format(response.status_code))
 		return
 
 
@@ -92,19 +93,24 @@ def onboardDevice(newKey, callback):
 	    reqBody['csr'] = base64.b64encode(csr_file.read())
 	data = json.dumps(reqBody)
 	
-	print "/cert body: "+data
-
 	print "submitting CSR"
+	devlog("Submitting CSR")
+
+	# Sleeps are for demo visual effect. Can be removed.
+	time.sleep(2)
 
 	headers = {'content-type': 'application/json','authorization': csrt['token']}
 	response = requests.post('https://alpineseniorcare.com/micronets/device/cert', data = data, headers = headers)
 	if response.status_code != 200:
-		callback("error: {}".format(response.http_status))
+		callback("HTTP Error: {}".format(response.http_status))
 		return
 
 	# Parse out reply and set up wpa configuration
 	reply = response.json()
 	print response.json()
+
+	devlog ("Rcvd Credentials")
+	time.sleep(2)
 
 	ssid = reply['subscriber']['ssid']
 	wifi_cert64 = reply['wifiCert']
@@ -119,6 +125,8 @@ def onboardDevice(newKey, callback):
 
 	print "configuring wpa_supplicant"
 	wpa_add_subscriber(ssid, ca_cert, wifi_cert, privateKeyPEM(private_key), 'micronets')
+	devlog("Configuring WiFi")
+	time.sleep(2)
 
 	reqBody = {'UID': device['UID']}
 	data = json.dumps(reqBody)
@@ -128,7 +136,7 @@ def onboardDevice(newKey, callback):
 		callback("error: {}".format(response.http_status))
 		return
 
-	callback('complete')
+	callback('Onboard Complete')
 
 # Remove private key
 def removeKey():
