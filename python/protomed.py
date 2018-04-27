@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import sys, time, argparse, logging, atexit
+from subprocess import call
 
 from utils.syslogger import SysLogger
 logger = SysLogger().logger()
@@ -25,6 +26,7 @@ from device_ui import DeviceUI
 GPIO.setmode(GPIO.BCM)
 restoring = False
 onboarding = False
+batteryLow = 0
 
 display = DeviceUI()
 
@@ -44,6 +46,17 @@ def clickOnboard():
 def clickReset():
     restore_defaults()
 
+def shutdown():
+    display.clear_messages()
+    display.add_message("Shutting Down..")
+    time.sleep(1)
+    call("sudo shutdown -h now", shell=True)
+
+def lowBattery():
+    global batteryLow
+    display.clear_messages()
+    display.add_message("Low Battery!!!")
+    batteryLow = 60
 
 buttonOnboard = GButton(22)
 buttonOnboard.set_callback(clickOnboard)
@@ -53,9 +66,16 @@ buttonReset.set_callback(clickReset)
 
 buttonMode = GButton(9)
 
+buttonShutdown = GButton(18, True)
+buttonShutdown.set_callback(shutdown)
+
+buttonLowBattery = GButton(15)
+buttonLowBattery.set_callback(lowBattery)
+
+
 # LED pin 25
 
-ledOnboard = GLed(25)
+ledOnboard = GLed(17)
 
 def restore_defaults():
     print "restore defaults"
@@ -80,7 +100,8 @@ def begin_onboard():
     context['onboarding'] = True
 
     # Read clear private key switch
-    newKey = GPIO.input(9)
+    newKey = buttonMode.is_set()
+    #print "newKey: {}".format(newKey)
     thr = threading.Thread(target=onboardDevice, args=(newKey, end_onboard, status_message,)).start()
 
 def status_message(message):
@@ -114,18 +135,36 @@ def cleanup():
 
 atexit.register(cleanup)
 
-# use display loop for screensaver
-#disp.sprite_loop()
-
-# test the display
-#disp.clear()
-#disp.setFont("/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf", 16, "white")
-#disp.textOut(20, 0, "Micronets")
-
-# Loop forever, doing something useful hopefully:
-
+# Setup power down and low battery monitor
 # Have green LED reflect subscriber configured status
 set_state()
 while True:
     display.refresh()
     time.sleep(1)
+    #print "batteryLow: {}".format(batteryLow)
+    if batteryLow > 0:
+        if (not buttonLowBattery.is_set()):
+            print "plugged back in.."
+            # plugged back in
+            batteryLow = 0
+            display.clear_messages()
+            display.setLowBattery(batteryLow)
+        else:
+            # still discharging
+            batteryLow = batteryLow - 1
+            if batteryLow == 0:
+                display.clear_messages()
+                display.add_message("Shutting Down..")
+                display.refresh()
+                time.sleep(1)
+                call("sudo shutdown -h now", shell=True)
+                shutdown()
+            else:
+                display.setLowBattery(batteryLow)
+                display.update_message("Shutdown in 0:{0:0>2}".format(batteryLow))
+        
+
+
+        
+
+

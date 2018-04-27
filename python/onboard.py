@@ -35,6 +35,9 @@ def onboardDevice(newKey, callback, devlog):
 
 	if newKey == True:
 		deleteKey(keyName, keyPath)
+		print "generating new key pair"
+		devlog("Generate Keys")
+
 
 	private_key = None
 

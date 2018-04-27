@@ -45,23 +45,34 @@ class DeviceUI(object):
         self.virtual.add_hotspot(status, (0, 102))
         self.start_time = None
 
+        self.lowBattery = 0;
+
     # using luma library
     def __get_device__(self):
         parser = cmdline.create_parser(description='luma.examples arguments')
         config = []
-        config.append("--display=st7735")
-        config.append("--interface=spi")
-        config.append("--spi-bus-speed=16000000")
-        config.append("--gpio-reset=24")
-        config.append("--gpio-data-command=23")
-        config.append("--gpio-backlight=18")
-        config.append("--width=128")
-        config.append("--height=128")
-        config.append("--bgr")
-        config.append("--h-offset=1")
-        config.append("--v-offset=2")
-        config.append("--backlight-active=high")
-        config.append("--rotate=3")
+
+        if True:
+            config.append("--display=ssd1351")
+            config.append("--interface=spi")
+            config.append("--width=128")
+            config.append("--height=128")
+            config.append("--spi-bus-speed=16000000")
+            config.append("--rotate=0")
+        else:
+            config.append("--display=st7735")
+            config.append("--interface=spi")
+            config.append("--spi-bus-speed=16000000")
+            config.append("--gpio-reset=24")
+            config.append("--gpio-data-command=23")
+            config.append("--gpio-backlight=18")
+            config.append("--width=128")
+            config.append("--height=128")
+            config.append("--bgr")
+            config.append("--h-offset=1")
+            config.append("--v-offset=2")
+            config.append("--backlight-active=high")
+            config.append("--rotate=0")
 
         args = parser.parse_args(config)
 
@@ -78,11 +89,16 @@ class DeviceUI(object):
     def render_banner(self, draw, width, height):
         l,t,r,b = self.device.bounding_box
         width = r-l
-        title = "Micronets"
+        if self.lowBattery > 0:
+            title = "Low Battery"
+            color = "red"
+        else:
+            title = "Micronets"
+            color = "blue"
         tw, th = draw.textsize(title, font=self.font1)
-        draw.rectangle((l,t,r,20), outline="blue", fill="blue")
+        draw.rectangle((l,t,r,20), outline=color, fill=color)
 
-        if wpa_subscriber_exists():
+        if wpa_subscriber_exists() and self.lowBattery == 0:
             draw.text((25, t +2 ), text=title, fill="white", font=self.font1)
             draw.bitmap((110,4),self.linkedIcon)
         else:
@@ -91,7 +107,7 @@ class DeviceUI(object):
     def render_status(self, draw, width, height):
         l,t,r,b = self.device.bounding_box
         self.showSSID = not self.showSSID
-        draw.rectangle((l,t+3,r,25), outline="green", fill="green")
+        draw.rectangle((l,t+3,r,25), outline="#004030", fill="#008030")
         if (self.showSSID):
             draw.text((1, t + 6), text=self.get_ssid(), fill="white", font=self.font2)
         else:
@@ -103,13 +119,20 @@ class DeviceUI(object):
     def render_messages(self, draw, width, height):
         draw.rectangle((0, 0, width, height), fill="black")
 
-        for i in range(len(self.messages)):
-            text = u"\u2022 {}".format(self.messages[i])
+        start = 0
+        items = len(self.messages)
+        if len(self.messages) > 6:
+            start = len(self.messages) - 6
+            items = 6
+
+        for i in range(items):
+            index = start + i
+            text = u"\u2022 {}".format(self.messages[index])
             draw.text((0, (i*13)+1), text=text, fill="white", font=self.font2)
 
         if self.start_time != None:
             curr_time = time.time()
-            if (curr_time - self.start_time) > 60:
+            if (curr_time - self.start_time) > 30:
                 self.start_time = None
                 self.clear_messages()
 
@@ -119,6 +142,14 @@ class DeviceUI(object):
     def add_message(self, message):
         self.messages.append(message)
         self.start_time = time.time()
+
+    # Replace last message instead of appending
+    def update_message(self, message):
+        self.messages[len(self.messages)-1] = message
+        self.start_time = time.time()
+        
+    def setLowBattery(self, count):
+        self.lowBattery = count
 
     def get_ipaddress(self):
         ipaddress = os.popen("ifconfig wlan0 | grep 'inet '").read().strip().split(" ")[1]

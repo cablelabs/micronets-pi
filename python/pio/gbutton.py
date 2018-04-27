@@ -11,15 +11,20 @@ logger = SysLogger().logger()
 
 class GButton(object):
 
-    def __init__(self, pin):
+    def __init__(self, pin, invert=False):
 
         ## Instance Variables
         self.pin = pin
         self.user_callback = None
+        self.invert = invert
 
         GPIO.setmode(GPIO.BCM)
-        GPIO.setup(self.pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-        GPIO.add_event_detect(self.pin, GPIO.RISING, self.button_callback, bouncetime=50)
+        if self.invert == True:
+            GPIO.setup(self.pin, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+            GPIO.add_event_detect(self.pin, GPIO.RISING, self.button_callback, bouncetime=30)
+        else:
+            GPIO.setup(self.pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+            GPIO.add_event_detect(self.pin, GPIO.FALLING, self.button_callback, bouncetime=30)
 
     def set_callback(self, func):
         self.user_callback = func
@@ -27,10 +32,20 @@ class GButton(object):
     # local callback for button primitives
     def button_callback(self, channel):
 
-        pressed = GPIO.input(self.pin)
+        #if self.invert:
+        #    pressed = not GPIO.input(self.pin)
+        #else:
+        pressed = GPIO.input(self.pin) == self.invert
+
+        #print "button {} click. Inverted: {} Pressed: {}".format(self.pin, self.invert, pressed)
+
         if (pressed):
             if self.user_callback:
                 self.user_callback()
+
+    def is_set(self):
+        return GPIO.input(self.pin) == self.invert
+
                     
 if __name__ == '__main__':
     count7 = 0
