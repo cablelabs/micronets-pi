@@ -25,14 +25,16 @@ def wpa_reset():
 
 	f.close();
 
-	# add default network
+	# add default networks
+	add_network('hotspot', 1)
 	add_network('default', 0)
+
 
 def wpa_subscriber_exists():
 	certFile = Path("/etc/micronets/networks/subscriber/wifi.crt")
 	return certFile.is_file()
 	
-def wpa_add_subscriber(ssid, ca_cert, wifi_cert, wifi_key, identity):
+def wpa_add_subscriber(ssid, ca_cert, wifi_cert, wifi_key, passphrase, identity):
 
 	# Start with default configuration
 	wpa_reset()
@@ -47,7 +49,8 @@ def wpa_add_subscriber(ssid, ca_cert, wifi_cert, wifi_key, identity):
 		f.write('identity="' + identity + '"\n')
 		f.write('ca_cert="/etc/micronets/networks/subscriber/ca.pem"\n')
 		f.write('client_cert="/etc/micronets/networks/subscriber/wifi.crt"\n')
-		f.write('private_key="/etc/micronets/networks/subscriber/wifi_key"\n')
+		f.write('private_key="/etc/micronets/networks/subscriber/wifi.crt"\n')
+		f.write('private_key_passwd="' + passphrase + '"\n')
 
 		f.close()
 
@@ -60,7 +63,7 @@ def wpa_add_subscriber(ssid, ca_cert, wifi_cert, wifi_key, identity):
 	    f.write(wifi_key)
 
 	# add subscriber network
-	add_network('subscriber', 1)
+	add_network('subscriber', 10)
 
 
 def rm_silent(filename):

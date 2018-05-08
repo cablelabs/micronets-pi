@@ -3,35 +3,76 @@ import json
 import requests
 from pprint import pprint
 from OpenSSL import crypto, SSL
-import os, sys, time
+import os, sys, time, traceback
 import base64
 from uuid import getnode as get_mac
 
 from lib.ecc_keys import *
 from lib.wpa_supplicant import *
 
+import pprint
+
 # key names/location
 keyPath = '../ssh'
 keyName = 'wifiKey'
 csrName = 'wifiCSR'
-UID = None
+deviceID = None
 
 if not os.path.exists(keyPath):
     os.makedirs(keyPath)
 
-def cancelOnboard():
-	global UID
+def makeURL(path):
+
+	try:
+		fileDir = os.path.dirname(os.path.realpath('__file__'))
+		filename = os.path.join(fileDir, '../config/registration.json')
+   		fileData = open(filename).read()
+   		print "fileData: {}".format(fileData)
+		registration = json.loads(fileData)
+		pprint.pprint(registration)
+		host = registration['url']
+
+	except (OSError, IOError) as e: # FileNotFoundError does not exist on Python < 3.3
+		host = "https://alpineseniorcare.com/micronets"
+
+	url = "{}/{}".format(host, path)
+	return url
+
+def cancelOnboard(devlog):
+	try:
+		execCancelOnboard(devlog)
+	except Exception as e:
+		devlog("!! {}".format(e.__doc__))
+		print e.__doc__
+		print e.message
+		print '-'*60
+        traceback.print_exc(file=sys.stdout)
+        print '-'*60
+
+
+def execCancelOnboard(devlog):
+	global deviceID
 
 	headers = {'content-type': 'application/json'}
-	body = {'UID': UID}
+	body = {'deviceID': deviceID}
 	data = json.dumps(body)
-	response = requests.post('https://alpineseniorcare.com/micronets/device/cancel', data = data, headers = headers)
-
-	print "cancel: {}".format(json.dumps(reqBody))
-
+	url = makeURL('device/cancel')
+	response = requests.post(url, data = data, headers = headers)
 
 def onboardDevice(newKey, callback, devlog):
-	global UID
+	try:
+		execOnboardDevice(newKey, callback, devlog)
+	except Exception as e:
+		callback(e.__doc__)
+		devlog("!! {}".format(e.__doc__))
+		print e.__doc__
+		print e.message
+		print '-'*60
+        traceback.print_exc(file=sys.stdout)
+        print '-'*60
+
+def execOnboardDevice(newKey, callback, devlog):
+	global deviceID
 
 	if newKey == True:
 		deleteKey(keyName, keyPath)
@@ -58,18 +99,19 @@ def onboardDevice(newKey, callback, devlog):
 
 	# Replace UID with hash of public key
 	device = json.loads(data)
-	device['UID'] = publicKeyHash(public_key);
-	device['MAC'] = ':'.join(("%012X" % get_mac())[i:i+2] for i in range(0, 12, 2))
+	device['deviceID'] = publicKeyHash(public_key);
+	device['macAddress'] = ':'.join(("%012X" % get_mac())[i:i+2] for i in range(0, 12, 2))
 	data = json.dumps(device)
 
 	# Save in case we cancel
-	UID = device['UID']
+	deviceID = device['deviceID']
 
 	print "advertising device:\n{}".format(data)
 	devlog("Advertise Device")
 
 	headers = {'content-type': 'application/json'}
-	response = requests.post('https://alpineseniorcare.com/micronets/device/advertise', data = data, headers = headers)
+	url = makeURL('device/advertise')
+	response = requests.post(url, data = data, headers = headers)
 
 	if response.status_code == 204:
 		callback("Onboard canceled")
@@ -91,7 +133,7 @@ def onboardDevice(newKey, callback, devlog):
 	csr = generateCSR(private_key, csrName, keyPath)
 
 	# Create the submit message
-	reqBody = {'UID': device['UID']}
+	reqBody = {'deviceID': device['deviceID']}
 	with open(keyPath+'/'+'wifiCSR.pem', "rb") as csr_file:
 	    reqBody['csr'] = base64.b64encode(csr_file.read())
 	data = json.dumps(reqBody)
@@ -103,7 +145,8 @@ def onboardDevice(newKey, callback, devlog):
 	time.sleep(2)
 
 	headers = {'content-type': 'application/json','authorization': csrt['token']}
-	response = requests.post('https://alpineseniorcare.com/micronets/device/cert', data = data, headers = headers)
+	url = makeURL('device/cert')
+	response = requests.post(url, data = data, headers = headers)
 	if response.status_code != 200:
 		callback("HTTP Error: {}".format(response.http_status))
 		return
@@ -126,15 +169,20 @@ def onboardDevice(newKey, callback, devlog):
 	print "wifi_cert: {}".format(wifi_cert)
 	print "ca_cert: {}".format(ca_cert)
 
+	if reply['passphrase'] != None:
+		passphrase = reply['passphrase']
+	else:
+		passphrase = "whatever"
+
 	print "configuring wpa_supplicant"
-	wpa_add_subscriber(ssid, ca_cert, wifi_cert, privateKeyPEM(private_key), 'micronets')
+	wpa_add_subscriber(ssid, ca_cert, wifi_cert, wifi_cert, passphrase, 'micronets')
 	devlog("Configuring WiFi")
 	time.sleep(2)
 
-	reqBody = {'UID': device['UID']}
+	reqBody = {'deviceID': device['deviceID']}
 	data = json.dumps(reqBody)
-
-	response = requests.post('https://alpineseniorcare.com/micronets/device/pair-complete', data = data, headers = headers)
+	url = makeURL('device/pair-complete')
+	response = requests.post(url, data = data, headers = headers)
 	if response.status_code != 200:
 		callback("error: {}".format(response.http_status))
 		return

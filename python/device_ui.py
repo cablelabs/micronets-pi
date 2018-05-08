@@ -152,7 +152,10 @@ class DeviceUI(object):
         self.lowBattery = count
 
     def get_ipaddress(self):
-        ipaddress = os.popen("ifconfig wlan0 | grep 'inet '").read().strip().split(" ")[1]
+        fields = os.popen("ifconfig wlan0 | grep 'inet '").read().strip().split(" ")
+        ipaddress = "NO IP ADDRESS"
+        if len(fields) >= 2:
+            ipaddress = fields[1]
         return ipaddress
 
     def get_ssid(self):

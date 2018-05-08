@@ -38,7 +38,7 @@ def clickOnboard():
     if context['onboarding']:
         #end_onboard()
         #context['onboarding'] = False
-        cancelOnboard()
+        cancelOnboard(status_message)
     else: 
         begin_onboard()
         context['onboarding'] = True
@@ -129,6 +129,8 @@ def cleanup():
     # Clear display
     display.clear_messages()
 
+    display.clear()
+
     # Release GPIO
     GPIO.cleanup()
 
@@ -138,6 +140,8 @@ atexit.register(cleanup)
 # Setup power down and low battery monitor
 # Have green LED reflect subscriber configured status
 set_state()
+
+
 while True:
     display.refresh()
     time.sleep(1)

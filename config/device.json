@@ -1,8 +1,9 @@
 { 
-	"UID" : "584BB997-3193-4CD0-BD42-4E9359A58E81",
-    "SN" : "SCNB-00007740",
-    "MFG" : "ShureCare",
-    "TYPE" : "Nebulizer",
-    "MAC" : "08:00:69:02:01:FC",
-    "MODEL" : "Breath-Easy"
+	"deviceID" : "584BB997-3193-4CD0-BD42-4E9359A58E81",
+    "serial" : "SCNB-00007740",
+    "vendor" : "ShureCare",
+    "type" : "Nebulizer",
+    "macAddress" : "08:00:69:02:01:FC",
+    "model" : "Breathe-Easy",
+    "class" : "Medical"
 }

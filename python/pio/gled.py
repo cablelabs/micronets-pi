@@ -59,7 +59,7 @@ class GLed(object):
 
 if __name__ == '__main__':
     
-    led = GLed(25)
+    led = GLed(17)
 
     i = 0
     i = -1
