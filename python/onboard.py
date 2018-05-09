@@ -4,6 +4,8 @@ import requests
 from pprint import pprint
 from OpenSSL import crypto, SSL
 import os, sys, time, traceback
+from subprocess import call
+
 import base64
 from uuid import getnode as get_mac
 
@@ -188,21 +190,33 @@ def execOnboardDevice(newKey, callback, devlog):
 		return
 
 	callback('Onboard Complete')
+	restartWifi()
 
 # Remove private key
 def removeKey():
 	deleteKey(keyName, keyPath)
 
+def restartWifi():
+	call("sudo ifconfig wlan0 down; sudo systemctl daemon-reload; sudo systemctl restart dhcpcd; sudo ifconfig wlan0 up", shell=True)
+
 # Remove subscriber config
 def resetDevice():
 	wpa_reset()
+	restartWifi()
+
+
+def localDevlog(msg):
+	print "message: {}".format(msg)
+
+def localEndOnboard(msg):
+	print "End Onboard: {}".format(msg)
 
 if __name__ == '__main__':
 
 	if len(sys.argv) > 1 and sys.argv[1] == 'reset':
 		print "reset"
-		# TODO: Send message to registration server
-		wpa_reset()
+		resetDevice()
 	else:
-		print "onboarding"
-		onboardDevice(len(sys.argv) > 1 and sys.argv[1] == 'newkey')
+		print "Onboarding"
+		newKey = len(sys.argv) > 1 and sys.argv[1] == 'newkey'
+		onboardDevice(newKey, localEndOnboard, localDevlog)

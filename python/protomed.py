@@ -36,9 +36,9 @@ context = {'restoring':False, 'onboarding':False}
 def clickOnboard():
     print "click onboard"
     if context['onboarding']:
-        #end_onboard()
-        #context['onboarding'] = False
-        cancelOnboard(status_message)
+        #cancelOnboard(status_message)
+        thr = threading.Thread(target=cancelOnboard, args=(status_message,)).start()
+
     else: 
         begin_onboard()
         context['onboarding'] = True
@@ -48,9 +48,23 @@ def clickReset():
 
 def shutdown():
     display.clear_messages()
-    display.add_message("Shutting Down..")
-    time.sleep(1)
-    call("sudo shutdown -h now", shell=True)
+
+    if buttonOnboard.is_set():
+        # Hold Onboard then press Shutdown == reboot
+
+        display.clear_messages()
+        display.refresh()
+
+        # Cancel if in progress
+        thr = threading.Thread(target=cancelOnboard, args=(no_message,)).start()
+
+        display.add_message("Restarting..")
+        call("sudo systemctl restart protomed", shell=True)
+
+    else:
+        display.add_message("Shutting Down..")
+        time.sleep(1)
+        call("sudo shutdown -h now", shell=True)
 
 def lowBattery():
     global batteryLow
@@ -106,6 +120,9 @@ def begin_onboard():
 
 def status_message(message):
     display.add_message(message)
+
+def no_message(message):
+    return
 
 def end_onboard(status):
     print "end onboard: {}".format(status)

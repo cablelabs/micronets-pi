@@ -1,1 +1,0 @@
-ssh root@MachineB 'bash -s' < local_script.sh
