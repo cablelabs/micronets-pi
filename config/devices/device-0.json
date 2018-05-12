@@ -1,0 +1,6 @@
+{ 
+    "vendor" : "ShureCare",
+    "type" : "Nebulizer",
+    "model" : "Breathe-Easy",
+    "class" : "Medical"
+}

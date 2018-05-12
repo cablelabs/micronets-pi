@@ -37,6 +37,10 @@ def clickOnboard():
     print "click onboard"
     if context['onboarding']:
         #cancelOnboard(status_message)
+        display.clear_messages()
+        display.add_message("Canceling..")
+        display.refresh()
+
         thr = threading.Thread(target=cancelOnboard, args=(status_message,)).start()
 
     else: 
@@ -53,16 +57,17 @@ def shutdown():
         # Hold Onboard then press Shutdown == reboot
 
         display.clear_messages()
+        display.add_message("Restarting..")
         display.refresh()
 
         # Cancel if in progress
         thr = threading.Thread(target=cancelOnboard, args=(no_message,)).start()
 
-        display.add_message("Restarting..")
         call("sudo systemctl restart protomed", shell=True)
 
     else:
         display.add_message("Shutting Down..")
+        display.refresh()
         time.sleep(1)
         call("sudo shutdown -h now", shell=True)
 

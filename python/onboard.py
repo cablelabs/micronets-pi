@@ -15,7 +15,7 @@ from lib.wpa_supplicant import *
 import pprint
 
 # key names/location
-keyPath = '../ssh'
+keyPath = '../ssl'
 keyName = 'wifiKey'
 csrName = 'wifiCSR'
 deviceID = None
@@ -23,13 +23,23 @@ deviceID = None
 if not os.path.exists(keyPath):
     os.makedirs(keyPath)
 
+# Ensure we have a symlink to device metadata
+fileDir = os.path.dirname(os.path.realpath('__file__'))
+deviceConfig = os.path.join(fileDir, '../config/thisDevice')
+
+if not os.path.exists(deviceConfig):
+	# default to device 0. 
+	# to change selected device, manually replace symbolic link.
+	defaultDevice = os.path.join(fileDir, '../config/devices/device-0.json')
+	call("ln -s " + defaultDevice + " " + deviceConfig, shell=True)
+
 def makeURL(path):
 
 	try:
 		fileDir = os.path.dirname(os.path.realpath('__file__'))
 		filename = os.path.join(fileDir, '../config/registration.json')
-   		fileData = open(filename).read()
-   		print "fileData: {}".format(fileData)
+		fileData = open(filename).read()
+		print 'fileData: {}'.format(fileData)
 		registration = json.loads(fileData)
 		pprint.pprint(registration)
 		host = registration['url']
@@ -93,16 +103,15 @@ def execOnboardDevice(newKey, callback, devlog):
 	public_key = private_key.public_key()
 
 	# Advertise our device
-	#cwd = os.path.dirname(os.path.realpath(__file__))
-	#print "cwd: {}".format(cwd)
 	fileDir = os.path.dirname(os.path.realpath('__file__'))
-	filename = os.path.join(fileDir, '../config/device.json')
+	filename = deviceConfig
 	data = open(filename).read()
 
 	# Replace UID with hash of public key
 	device = json.loads(data)
 	device['deviceID'] = publicKeyHash(public_key);
 	device['macAddress'] = ':'.join(("%012X" % get_mac())[i:i+2] for i in range(0, 12, 2))
+	device['serial'] = device['vendor'][:1] + device['model'][:1] + '-' + device['deviceID'][-8:].upper()
 	data = json.dumps(device)
 
 	# Save in case we cancel

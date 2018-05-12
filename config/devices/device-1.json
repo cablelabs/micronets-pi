@@ -1,0 +1,6 @@
+{ 
+    "vendor" : "AcmeMeds",
+    "type" : "Heartrate Monitor",
+    "model" : "Heart-Assure",
+    "class" : "Medical"
+}
