@@ -12,6 +12,8 @@ This code runs on a Raspberry Pi Zero Wifi, with the following components attach
  - Battery - Will last around an hour I think. 
  - Charge circuit - Allows for running on power adapter and charging battery
 
+ [User Manual](https://github.com/cablelabs/micronets-pi/wiki/ProtoMed-User-Manual)
+
 Note: THIS APPLICATION REQUIRES PYTHON 2.7!!
 
  ## TODO: 
@@ -147,5 +149,13 @@ A reset device will have a `/etc/wpa_supplicant/wpa_supplicant.conf` file that l
 	}
 
 There should be no files in `/etc/micronets/networks/subscriber`
+
+## Standalone Testing
+You can test the onboarding sequence without an actual ProtoMed device. 
+- Clone an SD card from an existing device or install platform from scratch on a Raspberry Pi Zero W.
+- Install latest software onto the Pi Zero from this repository. `./install/upload <host>`
+- From the python folder: `sudo python onboard.py`
+
+
 
 
