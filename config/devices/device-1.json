@@ -2,5 +2,7 @@
     "vendor" : "AcmeMeds",
     "type" : "Heartrate Monitor",
     "model" : "Heart-Assure",
-    "class" : "Medical"
+    "class" : "Medical",
+    "deviceConnection" : "wireless",
+    "deviceName" : "ProtoMed 2"
 }

@@ -2,5 +2,7 @@
     "vendor" : "VitaLife",
     "type" : "Glucose Monitor",
     "model" : "Sure-Sugar",
-    "class" : "Medical"
+    "class" : "Medical",
+    "deviceConnection" : "wireless",
+    "deviceName" : "ProtoMed 3"
 }
