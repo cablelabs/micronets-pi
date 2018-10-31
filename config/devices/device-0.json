@@ -3,6 +3,6 @@
     "type" : "Nebulizer",
     "model" : "Breathe-Easy",
     "class" : "Medical",
-    "deviceConnection" : "wireless",
+    "deviceConnection" : "wifi",
     "deviceName" : "ProtoMed 1"
 }

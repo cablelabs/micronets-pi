@@ -3,6 +3,6 @@
     "type" : "Glucose Monitor",
     "model" : "Sure-Sugar",
     "class" : "Medical",
-    "deviceConnection" : "wireless",
+    "deviceConnection" : "wifi",
     "deviceName" : "ProtoMed 3"
 }

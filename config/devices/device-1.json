@@ -3,6 +3,6 @@
     "type" : "Heartrate Monitor",
     "model" : "Heart-Assure",
     "class" : "Medical",
-    "deviceConnection" : "wireless",
+    "deviceConnection" : "wifi",
     "deviceName" : "ProtoMed 2"
 }
