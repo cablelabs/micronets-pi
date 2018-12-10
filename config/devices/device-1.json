@@ -4,5 +4,6 @@
     "model" : "Heart-Assure",
     "class" : "Medical",
     "deviceConnection" : "wifi",
-    "deviceName" : "ProtoMed 2"
+    "deviceName" : "ProtoMed 2",
+    "modelUID64" : "BQ0LDQsMDAM"
 }

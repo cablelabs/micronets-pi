@@ -57,11 +57,17 @@ def shutdown():
         # Hold Onboard then press Shutdown == reboot
 
         display.clear_messages()
-        display.add_message("Restarting..")
-        display.refresh()
 
         # Cancel if in progress
         thr = threading.Thread(target=cancelOnboard, args=(no_message,)).start()
+
+        # We also might press restart just to bring wifi down/up. 
+        display.add_message("Cycling Wifi..")
+        display.refresh()
+        restartWifi()
+
+        display.add_message("Restarting..")
+        display.refresh()
 
         call("sudo systemctl restart protomed", shell=True)
 

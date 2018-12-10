@@ -71,22 +71,28 @@ This should copy the required files to `/etc/micronets`. You might have to creat
 It will also copy the startup script to `/etc/init.d`
 
 ## Operation
-- You may have to edit `python/onboard.py` and change the urls if the server base url is not `https://alpineseniorcare.com/micronets`
-- Navigate a browser window to `https://alpineseniorcare.com/micronets/device-list`
+- You may have to edit `config/thisRegistration.json` and change the url if the server base url is not `https://demo.alpineseniorcare.com/micronets2`
+- On first run, if `config/thisRegistration.json` does not exist, it is created by copying `config/registration.json`
+- Navigate a browser window to `https://alpineseniorcare.com/micronets2/portal/device-list`
 - Power on the device (make sure battery has a good charge)
-- Click the 'Fn' button. 
+	- Ensure red slide switch (master on/off) on side is in the on position (towards the display)
+	- Momentarily press the RED button to power on the device. It will take a few minutes for the display to come on.
+- Click the GREEN button. 
 	- Green LED should flash slowly
 	- Device should appear in browser
-- If you click the 'Fn' button again, it will cancel the onboarding and the device will disappear from the browser.
+- If you click the GREEN button again, it will cancel the onboarding and the device will disappear from the browser.
 - Otherwise, click the device in the browser
 	- You will be redirected to the MSO authentication server
 	- Scan the QRCode if you have the iPhone or just click on the QRCode
 	- Pairing should complete and the green LED should remain lit.
 - To 'un-onboard', click the black recessed reset button on the side of the device. 
 	- Green LED should flash rapidly for a second, then remain off. Certs and wpa_supplicant have been reset
-- The red slide switch on the side of the device is the mode switch. 
+- The recessed black slide switch on the side of the device is the mode switch. 
 	- When active, a new device key/UID is generated each time. Otherwise the key/UID is reused. 
 	- TODO: Indicator on display
+- Power off the unit by momentarily pressing the RED button. This does an orderly shutdown of the Raspberry Pi so that the SD card does not become corrupted.
+- Lock the device off by sliding the red switch on the side down (away from the display).
+- To cycle the wifi connection and restart the python script, press the green and red buttons at the same time (press green first, and release red last). This is way faster than powering off/on the device.
 
 ## Troubleshooting
 Log file: `/tmp/protomed.log`
@@ -99,28 +105,37 @@ If the default network uses WPA Enterprise certificates, there should also be ce
 ### Onboarded Device
 An onboarded device will have a `/etc/wpa_supplicant/wpa_supplicant.conf` file that looks like this:
 
-	ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
-	update_config=1
+ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
+update_config=1
 
-	network={
-	    priority=0
-	    ssid="visitors"
-	    psk="rockymountain"
-	    key_mgmt=WPA-PSK
-	}
-	network={
-	    priority=1
-	    ssid="Grandma's LINKSYS 1900"
-	    scan_ssid=1
-	    key_mgmt=WPA-EAP
-	    group=CCMP TKIP
-	    eap=TLS
-	    identity="micronets"
-	    ca_cert="/etc/micronets/networks/subscriber/ca.pem"
-	    client_cert="/etc/micronets/networks/subscriber/wifi.crt"
-	    private_key="/etc/micronets/networks/subscriber/wifi_key"
-	}
-
+# hot spot on mobile phone - backup clinic wifi for demos while traveling
+network={
+    priority=1
+    ssid="micronets-hs"
+    psk="secblanket"
+    key_mgmt=WPA-PSK
+}
+# clinic wifi
+network={
+    priority=0
+    ssid="visitors"
+    psk="rockymountain"
+    key_mgmt=WPA-PSK
+}
+# subscriber wifi
+network={
+    priority=10
+    ssid="auntbetty-gw"
+    scan_ssid=1
+    key_mgmt=WPA-EAP
+    group=CCMP TKIP
+    eap=TLS
+    identity="micronets"
+    ca_cert="/etc/micronets/networks/subscriber/ca.pem"
+    client_cert="/etc/micronets/networks/subscriber/wifi.crt"
+    private_key="/etc/micronets/networks/subscriber/wifi.crt"
+    private_key_passwd="whatever"
+}
 
 There should also be these files in `/etc/micronets/networks/subscriber`:
 

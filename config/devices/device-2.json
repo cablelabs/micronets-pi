@@ -4,5 +4,6 @@
     "model" : "Sure-Sugar",
     "class" : "Medical",
     "deviceConnection" : "wifi",
-    "deviceName" : "ProtoMed 3"
+    "deviceName" : "ProtoMed 3",
+    "modelUID64" : "DgYHAAALAgQ"
 }

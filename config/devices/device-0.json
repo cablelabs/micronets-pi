@@ -4,5 +4,6 @@
     "model" : "Breathe-Easy",
     "class" : "Medical",
     "deviceConnection" : "wifi",
-    "deviceName" : "ProtoMed 1"
+    "deviceName" : "ProtoMed 1",
+    "modelUID64" : "CQQPBgMCCwk"
 }
