@@ -1,0 +1,9 @@
+{ 
+    "vendor" : "VitaLife",
+    "type" : "Glucose Monitor",
+    "model" : "Sure-Sugar",
+    "class" : "Medical",
+    "deviceConnection" : "wifi",
+    "deviceName" : "ProtoMed 4",
+    "modelUID64" : "DgYHAAALAgQ"
+}

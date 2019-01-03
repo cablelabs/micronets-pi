@@ -59,9 +59,9 @@ def makeURL(path):
 	url = "{}/{}".format(host, path)
 	return url
 
-def cancelOnboard(devlog, callback):
+def cancelOnboard(devlog):
 	try:
-		execCancelOnboard(devlog, callback)
+		execCancelOnboard(devlog)
 	except Exception as e:
 		devlog("!! {}".format(e.__doc__))
 		print e.__doc__
@@ -71,7 +71,7 @@ def cancelOnboard(devlog, callback):
         print '-'*60
 
 
-def execCancelOnboard(devlog, callback):
+def execCancelOnboard(devlog):
 	global deviceID
 
 	headers = {'content-type': 'application/json'}
@@ -79,8 +79,6 @@ def execCancelOnboard(devlog, callback):
 	data = json.dumps(body)
 	url = makeURL('device/cancel')
 	response = requests.post(url, data = data, headers = headers)
-	print "response received from device/cancel"
-	callback()
 
 def onboardDevice(newKey, display, devlog):
 	try:

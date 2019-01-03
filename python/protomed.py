@@ -8,16 +8,20 @@ logger = SysLogger().logger()
 
 from pio.gbutton import GButton
 from pio.gled import GLed
-#from pio.gdisp_5110 import GDisp_5110
-from pio.gdisp_st7735 import GDisp_st7735
-from onboard import *
 import threading
 from threading import Timer
 
 import RPi.GPIO as GPIO
 from PIL import ImageFont
 from device_ui import DeviceUI
+from screensaver import ScreenSaver
 
+buttonMode = GButton(9)
+DPP = buttonMode.is_set()
+if DPP:
+    from onboard_dpp import *
+else:
+    from onboard import *
 
 ############################################################
 # GPIO 
@@ -28,54 +32,56 @@ restoring = False
 onboarding = False
 batteryLow = 0
 
-display = DeviceUI()
+display = DeviceUI(DPP)
+
+screenSaver = ScreenSaver(display.device, 60)
 
 # Demented python scoping.
 context = {'restoring':False, 'onboarding':False}
 
 def clickOnboard():
-    print "click onboard"
-    if context['onboarding']:
-        #cancelOnboard(status_message)
-        display.clear_messages()
-        display.add_message("Canceling..")
-        display.refresh()
+    if not screenSaver.isActive():
+        print "click onboard"
+        if context['onboarding']:
+            display.clear_messages()
+            display.add_message("Canceling..")
+            display.refresh()
 
-        thr = threading.Thread(target=cancelOnboard, args=(status_message,)).start()
-
-    else: 
-        begin_onboard()
-        context['onboarding'] = True
+            cancel_onboard()
+        else: 
+            begin_onboard()
+            context['onboarding'] = True
 
 def clickReset():
     restore_defaults()
 
 def shutdown():
-    display.clear_messages()
-
-    if buttonOnboard.is_set():
-        # Hold Onboard then press Shutdown == reboot
-
+    if not screenSaver.isActive():
         display.clear_messages()
 
-        # Cancel if in progress
-        thr = threading.Thread(target=cancelOnboard, args=(no_message,)).start()
+        if buttonOnboard.is_set():
+            # Hold Onboard then press Shutdown == reboot
 
-        # We also might press restart just to bring wifi down/up. 
-        display.add_message("Cycling Wifi..")
-        display.refresh()
-        restartWifi()
+            display.clear_messages()
 
-        display.add_message("Restarting..")
-        display.refresh()
+            # Cancel if in progress
+            thr = threading.Thread(target=cancelOnboard, args=(no_message,)).start()
 
-        call("sudo systemctl restart protomed", shell=True)
+            # We also might press restart just to bring wifi down/up. 
+            display.add_message("Cycling Wifi..")
+            display.refresh()
+            restartWifi()
 
-    else:
-        display.add_message("Shutting Down..")
-        display.refresh()
-        time.sleep(1)
-        call("sudo shutdown -h now", shell=True)
+            display.add_message("Restarting..")
+            display.refresh()
+
+            call("sudo systemctl restart protomed", shell=True)
+
+        else:
+            display.add_message("Shutting Down..")
+            display.refresh()
+            time.sleep(1)
+            call("sudo shutdown -h now", shell=True)
 
 def lowBattery():
     global batteryLow
@@ -88,8 +94,6 @@ buttonOnboard.set_callback(clickOnboard)
 
 buttonReset = GButton(7)
 buttonReset.set_callback(clickReset)
-
-buttonMode = GButton(9)
 
 buttonShutdown = GButton(18, True)
 buttonShutdown.set_callback(shutdown)
@@ -117,6 +121,11 @@ def restore_complete():
     restoring = False
     set_state()
 
+def cancel_onboard():
+    thr = threading.Thread(target=cancelOnboard, args=(display,onboard_canceled,)).start()
+    context['onboarding'] = False
+    set_state()
+
 def begin_onboard():
     print "begin onboard"
     display.clear_messages()
@@ -124,13 +133,13 @@ def begin_onboard():
     ledOnboard.blink(.1)
     context['onboarding'] = True
 
-    # Read clear private key switch
-    newKey = buttonMode.is_set()
-    #print "newKey: {}".format(newKey)
-    thr = threading.Thread(target=onboardDevice, args=(newKey, end_onboard, status_message,)).start()
+    newKey = False
+    thr = threading.Thread(target=onboardDevice, args=(newKey, end_onboard, display,)).start()
 
-def status_message(message):
-    display.add_message(message)
+def onboard_canceled():
+    display.add_message("Onboard Canceled")
+#def status_message(message):
+#    display.add_message(message)
 
 def no_message(message):
     return
@@ -169,10 +178,14 @@ atexit.register(cleanup)
 # Have green LED reflect subscriber configured status
 set_state()
 
-
 while True:
+
     display.refresh()
     time.sleep(1)
+
+    # If screensaver starts, we won't return until it stops
+    screenSaver.checkIdle()
+
     #print "batteryLow: {}".format(batteryLow)
     if batteryLow > 0:
         if (not buttonLowBattery.is_set()):

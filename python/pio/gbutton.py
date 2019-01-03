@@ -21,10 +21,10 @@ class GButton(object):
         GPIO.setmode(GPIO.BCM)
         if self.invert == True:
             GPIO.setup(self.pin, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
-            GPIO.add_event_detect(self.pin, GPIO.RISING, self.button_callback, bouncetime=130)
+            GPIO.add_event_detect(self.pin, GPIO.RISING, self.button_callback, bouncetime=250)
         else:
             GPIO.setup(self.pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-            GPIO.add_event_detect(self.pin, GPIO.FALLING, self.button_callback, bouncetime=130)
+            GPIO.add_event_detect(self.pin, GPIO.FALLING, self.button_callback, bouncetime=250)
 
     def set_callback(self, func):
         self.user_callback = func
