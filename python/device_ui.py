@@ -37,6 +37,7 @@ class DeviceUI(object):
         self.showSSID = False 
         self.showQRC = False
         self.showSS = False # Screensaver
+        self.qrcImage = None
 
         self.messages = []
         # set up the display widgets
@@ -100,6 +101,9 @@ class DeviceUI(object):
     def refresh(self):
         if not self.showQRC:
             self.virtual.refresh()
+        else:
+            if self.qrcImage:
+                self.refresh_qrcode()
 
     def render_banner(self, draw, width, height):
         if not self.showQRC:
@@ -120,8 +124,12 @@ class DeviceUI(object):
             draw.rectangle((l,t,r,20), outline=color, fill=color)
 
             if wpa_subscriber_exists() and self.lowBattery == 0:
-                draw.text((left, t +2 ), text=title, fill="white", font=self.font1)
-                draw.bitmap((110,4),self.linkedIcon)
+                if not self.DPP:
+                    draw.text((left, t +2 ), text=title, fill="white", font=self.font1)
+                    draw.bitmap((110,4),self.linkedIcon)
+                else:
+                    draw.text((left-2, t +2 ), text=title, fill="white", font=self.font1)
+                    draw.bitmap((112,4),self.linkedIcon)
             else:
                 draw.text((left+5, t +2 ), text=title, fill="white", font=self.font1)
 
@@ -191,10 +199,13 @@ class DeviceUI(object):
         qr.add_data(data)
         qr.make(fit=True)
 
-        img = qr.make_image(fill_color="black", back_color="white").convert("RGBA")
+        self.qrcImage = qr.make_image(fill_color="black", back_color="white").convert("RGBA")
+        self.refresh_qrcode()
+
+    def refresh_qrcode(self):
         background = Image.new("RGBA", self.device.size, "white")
-        posn = ((self.device.width - img.width) // 2, 0)
-        background.paste(img, posn)
+        posn = ((self.device.width - self.qrcImage.width) // 2, 0)
+        background.paste(self.qrcImage, posn)
         self.device.display(background.convert(self.device.mode))
 
     def clear_qrcode(self):

@@ -59,9 +59,9 @@ def makeURL(path):
 	url = "{}/{}".format(host, path)
 	return url
 
-def cancelOnboard(devlog):
+def cancelOnboard(display, callback):
 	try:
-		execCancelOnboard(devlog)
+		execCancelOnboard(display, callback)
 	except Exception as e:
 		devlog("!! {}".format(e.__doc__))
 		print e.__doc__
@@ -71,7 +71,11 @@ def cancelOnboard(devlog):
         print '-'*60
 
 
-def execCancelOnboard(devlog):
+def execCancelOnboard(display, callback):
+
+	display.clear_qrcode()
+	callback()
+"""
 	global deviceID
 
 	headers = {'content-type': 'application/json'}
@@ -79,20 +83,28 @@ def execCancelOnboard(devlog):
 	data = json.dumps(body)
 	url = makeURL('device/cancel')
 	response = requests.post(url, data = data, headers = headers)
+"""
 
-def onboardDevice(newKey, display, devlog):
+def onboardDevice(newKey, callback, display):
+	
 	try:
-		execOnboardDevice(newKey, display, devlog)
+		execOnboardDevice(newKey, callback, display)
 	except Exception as e:
-		display.add_message(e.__doc__)
-		devlog("!! {}".format(e.__doc__))
+		callback(e.__doc__)
+		display.add_message("!! {}".format(e.__doc__))
 		print e.__doc__
 		print e.message
 		print '-'*60
         traceback.print_exc(file=sys.stdout)
         print '-'*60
 
-def execOnboardDevice(newKey, display, devlog):
+def execOnboardDevice(newKey, callback, display):
+
+	# For now, just display the qrcode
+	display.show_qrcode('DPP:C:81/1,115/36;K:MDkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDIgADM2206avxHJaHXgLMkq/24e0rsrfMP9K1Tm 8gx+ovP0I=;;')
+
+
+	"""
 	global deviceID
 
 	if newKey == True:
@@ -209,6 +221,7 @@ def execOnboardDevice(newKey, display, devlog):
 
 	display.add_message('Onboard Complete')
 	restartWifi()
+"""
 
 # Remove private key
 def removeKey():

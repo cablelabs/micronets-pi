@@ -37,11 +37,11 @@ display = DeviceUI(DPP)
 screenSaver = ScreenSaver(display.device, 60)
 
 # Demented python scoping.
-context = {'restoring':False, 'onboarding':False}
+context = {'restoring':False, 'onboarding':False, 'restarting': False}
 
 def clickOnboard():
+    print "click onboard"
     if not screenSaver.isActive():
-        print "click onboard"
         if context['onboarding']:
             display.clear_messages()
             display.add_message("Canceling..")
@@ -56,16 +56,64 @@ def clickReset():
     restore_defaults()
 
 def shutdown():
+    #display.add_message("click shutdown")
+    print "click shutdown"
+
+    count = 0
+    kill = False
+
+    while buttonShutdown.is_set():
+        time.sleep(1)
+        count = count + 1
+        if count == 5:
+            kill = True
+            break
+
+    if kill:
+        display.add_message("Shutting Down..")
+        display.refresh()
+        time.sleep(1)
+        call("sudo shutdown -h now", shell=True)
+    else:
+        display.clear_messages()
+        display.add_message("Restart Requested.")
+        display.refresh()
+
+        # Cancel if in progress
+        if context['onboarding']:
+            display.add_message("Canceling Onboard..")
+            display.refresh()
+            thr = threading.Thread(target=cancelOnboard, args=(no_message,)).start()
+
+        # We also might press restart just to bring wifi down/up. 
+        display.add_message("Cycling Wifi..")
+        display.refresh()
+        restartWifi()
+
+        display.add_message("Restarting..")
+        display.refresh()
+        time.sleep(1)
+        display.clear()
+
+        call("sudo systemctl restart protomed", shell=True)
+
+
+
+    '''
+    #time.sleep(1)
     if not screenSaver.isActive():
         display.clear_messages()
 
         if buttonOnboard.is_set():
             # Hold Onboard then press Shutdown == reboot
 
+            context['restarting'] = True
+
             display.clear_messages()
 
             # Cancel if in progress
-            thr = threading.Thread(target=cancelOnboard, args=(no_message,)).start()
+            if context['onboarding']:
+                thr = threading.Thread(target=cancelOnboard, args=(no_message,)).start()
 
             # We also might press restart just to bring wifi down/up. 
             display.add_message("Cycling Wifi..")
@@ -82,6 +130,7 @@ def shutdown():
             display.refresh()
             time.sleep(1)
             call("sudo shutdown -h now", shell=True)
+    '''
 
 def lowBattery():
     global batteryLow
@@ -89,7 +138,7 @@ def lowBattery():
     display.add_message("Low Battery!!!")
     batteryLow = 60
 
-buttonOnboard = GButton(22)
+buttonOnboard = GButton(22, False)
 buttonOnboard.set_callback(clickOnboard)
 
 buttonReset = GButton(7)

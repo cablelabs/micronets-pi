@@ -59,11 +59,11 @@ def makeURL(path):
 	url = "{}/{}".format(host, path)
 	return url
 
-def cancelOnboard(devlog, callback):
+def cancelOnboard(display, callback):
 	try:
-		execCancelOnboard(devlog, callback)
+		execCancelOnboard(display, callback)
 	except Exception as e:
-		devlog("!! {}".format(e.__doc__))
+		display.add_message("!! {}".format(e.__doc__))
 		print e.__doc__
 		print e.message
 		print '-'*60
@@ -71,7 +71,7 @@ def cancelOnboard(devlog, callback):
         print '-'*60
 
 
-def execCancelOnboard(devlog, callback):
+def execCancelOnboard(display, callback):
 	global deviceID
 
 	headers = {'content-type': 'application/json'}
@@ -82,25 +82,25 @@ def execCancelOnboard(devlog, callback):
 	print "response received from device/cancel"
 	callback()
 
-def onboardDevice(newKey, display, devlog):
+def onboardDevice(newKey, callback, display):
 	try:
-		execOnboardDevice(newKey, display, devlog)
+		execOnboardDevice(newKey, callback, display)
 	except Exception as e:
-		display.add_message(e.__doc__)
-		devlog("!! {}".format(e.__doc__))
+		callback(e.__doc__)
+		display.add_message("!! {}".format(e.__doc__))
 		print e.__doc__
 		print e.message
 		print '-'*60
         traceback.print_exc(file=sys.stdout)
         print '-'*60
 
-def execOnboardDevice(newKey, display, devlog):
+def execOnboardDevice(newKey, callback, display):
 	global deviceID
 
 	if newKey == True:
 		deleteKey(keyName, keyPath)
 		print "generating new key pair"
-		devlog("Generate Keys")
+		display.add_message("Generate Keys")
 
 
 	private_key = None
@@ -129,17 +129,17 @@ def execOnboardDevice(newKey, display, devlog):
 	deviceID = device['deviceID']
 
 	print "advertising device:\n{}".format(data)
-	devlog("Advertise Device")
+	display.add_message("Advertise Device")
 
 	headers = {'content-type': 'application/json'}
 	url = makeURL('device/advertise')
 	response = requests.post(url, data = data, headers = headers)
 
 	if response.status_code == 204:
-		display.add_message("Onboard canceled")
+		callback("Onboard canceled")
 		return
 	elif response.status_code != 200:
-		display.add_message("HTTP Error: {}".format(response.status_code))
+		callback("HTTP Error: {}".format(response.status_code))
 		return
 
 
@@ -161,7 +161,7 @@ def execOnboardDevice(newKey, display, devlog):
 	data = json.dumps(reqBody)
 	
 	print "submitting CSR"
-	devlog("Submitting CSR")
+	display.add_message("Submitting CSR")
 
 	# Sleeps are for demo visual effect. Can be removed.
 	time.sleep(2)
@@ -177,7 +177,7 @@ def execOnboardDevice(newKey, display, devlog):
 	reply = response.json()
 	print response.json()
 
-	devlog ("Rcvd Credentials")
+	display.add_message ("Rcvd Credentials")
 	time.sleep(2)
 
 	ssid = reply['subscriber']['ssid']
@@ -198,7 +198,7 @@ def execOnboardDevice(newKey, display, devlog):
 
 	print "configuring wpa_supplicant"
 	wpa_add_subscriber(ssid, ca_cert, wifi_cert, wifi_cert, passphrase, 'micronets')
-	devlog("Configuring WiFi")
+	display.add_message("Configuring WiFi")
 	time.sleep(2)
 
 	reqBody = {'deviceID': device['deviceID']}
@@ -209,7 +209,7 @@ def execOnboardDevice(newKey, display, devlog):
 		display.add_message("error: {}".format(response.http_status))
 		return
 
-	display.add_message('Onboard Complete')
+	callback('Onboard Complete')
 	restartWifi()
 
 # Remove private key
