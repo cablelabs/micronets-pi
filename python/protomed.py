@@ -56,46 +56,49 @@ def clickReset():
     restore_defaults()
 
 def shutdown():
-    #display.add_message("click shutdown")
-    print "click shutdown"
+    if not screenSaver.isActive():
+        print "click shutdown"
 
-    count = 0
-    kill = False
+        count = 0
+        kill = False
 
-    while buttonShutdown.is_set():
-        time.sleep(1)
-        count = count + 1
-        if count == 5:
-            kill = True
-            break
+        while buttonShutdown.is_set():
+            time.sleep(1)
+            count = count + 1
+            if count == 5:
+                kill = True
+                break
 
-    if kill:
-        display.add_message("Shutting Down..")
-        display.refresh()
-        time.sleep(1)
-        call("sudo shutdown -h now", shell=True)
-    else:
-        display.clear_messages()
-        display.add_message("Restart Requested.")
-        display.refresh()
-
-        # Cancel if in progress
-        if context['onboarding']:
-            display.add_message("Canceling Onboard..")
+        if kill:
+            display.add_message("Shutting Down..")
             display.refresh()
-            thr = threading.Thread(target=cancelOnboard, args=(no_message,)).start()
+            time.sleep(1)
+            call("sudo shutdown -h now", shell=True)
+        else:
+            display.clear_messages()
+            display.add_message("Restart Requested.")
+            display.refresh()
+            time.sleep(1)
 
-        # We also might press restart just to bring wifi down/up. 
-        display.add_message("Cycling Wifi..")
-        display.refresh()
-        restartWifi()
+            # Cancel if in progress
+            if context['onboarding']:
+                display.add_message("Canceling Onboard..")
+                display.refresh()
+                thr = threading.Thread(target=cancelOnboard, args=(no_message,)).start()
+                time.sleep(1)
 
-        display.add_message("Restarting..")
-        display.refresh()
-        time.sleep(1)
-        display.clear()
+            # We also might press restart just to bring wifi down/up. 
+            display.add_message("Cycling Wifi..")
+            display.refresh()
+            time.sleep(1)
+            restartWifi()
 
-        call("sudo systemctl restart protomed", shell=True)
+            display.add_message("Restarting..")
+            display.refresh()
+            time.sleep(1)
+            display.clear()
+
+            call("sudo systemctl restart protomed", shell=True)
 
 
 
