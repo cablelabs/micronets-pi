@@ -2,13 +2,13 @@
 
 This code runs on a Raspberry Pi Zero Wifi, with the following components attached:
 
- - TFT 128x128 display
+ - OLED 128x128 display
  - Power Switch
  - Function Switch (advertise/cancel)
  - Power LED
  - Function LED (Slow blink = Onboarding in progress, Fast blink = Reset in progress, On = Onboarded, Off = Reset )
  - Reset Switch - Removes subscriber credentials and reconfigures wpa-supplicant to only connect to default network (clinic)
- - Mode Switch - Determines if a new key pair & UID be created each time device is advertised/onboarded
+ - Mode Switch - Sets the onboard functionality to be either "clinic" or "DPP". DPP simply scans a qrcode and sends it to the micronets-dpp-server
  - Battery - Will last around an hour I think. 
  - Charge circuit - Allows for running on power adapter and charging battery
 
@@ -70,6 +70,9 @@ Once the system is setup and you have ssh working, run `./install/upload <host>`
 This should copy the required files to `/etc/micronets`. You might have to create this folder first. 
 It will also copy the startup script to `/etc/init.d`
 
+## Configuration
+On startup, if `config/thisRegistration.json` does not exist, it is copied from `config/registration.json`. (it is not a file in the repository). Also, if `config/thisDevice` does not exist, a symlink is created to `config/devices/device-0.json`. This is done to preserve the device configuration when the software is updated.
+
 ## Operation
 - You may have to edit `config/thisRegistration.json` and change the url if the server base url is not `https://demo.alpineseniorcare.com/micronets2`
 - On first run, if `config/thisRegistration.json` does not exist, it is created by copying `config/registration.json`
@@ -88,18 +91,19 @@ It will also copy the startup script to `/etc/init.d`
 - To 'un-onboard', click the black recessed reset button on the side of the device. 
 	- Green LED should flash rapidly for a second, then remain off. Certs and wpa_supplicant have been reset
 - The recessed black slide switch on the side of the device is the mode switch. 
-	- When active, a new device key/UID is generated each time. Otherwise the key/UID is reused. 
-	- TODO: Indicator on display
-- Power off the unit by momentarily pressing the RED button. This does an orderly shutdown of the Raspberry Pi so that the SD card does not become corrupted.
+	- Up position (towards display) is DPP mode, down is clinic mode.
+- Power off the unit by press/holding the RED button for 5 seconds. This does an orderly shutdown of the Raspberry Pi so that the SD card does not become corrupted.
 - Lock the device off by sliding the red switch on the side down (away from the display).
-- To cycle the wifi connection and restart the python script, press the green and red buttons at the same time (press green first, and release red last). This is way faster than powering off/on the device.
+- To cycle the wifi connection and restart the python script, momentarily press the red button. This is way faster than powering off/on the device.
+- A screensaver activates after 1 minute of inactivity (we were getting burn-in on the OLED displays). Pressing either the GREEN or RED button deactivates the screensaver. 
+- Messages on the screen are cleared after 30 seconds.
 
 ## Troubleshooting
 Log file: `/tmp/protomed.log`
 
 ### Default Network
 There should always be the following files present for the default (clinic) network in `/etc/micronets/networks/default`:
- - network.config
+ - network.config (this should have entries for one or more "clinic" SSID, currently "visitors" and "micronets-hs")
 If the default network uses WPA Enterprise certificates, there should also be certs etc in this folder.
 
 ### Onboarded Device
