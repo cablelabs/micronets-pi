@@ -77,9 +77,9 @@ def execCancelOnboard(display, callback):
 	headers = {'content-type': 'application/json'}
 	body = {'deviceID': deviceID}
 	data = json.dumps(body)
-	url = makeURL('device/cancel')
+	url = makeURL('device/v1/cancel')
 	response = requests.post(url, data = data, headers = headers)
-	print "response received from device/cancel"
+	print "response received from device/v1/cancel"
 	callback()
 
 def onboardDevice(newKey, callback, display):
@@ -132,7 +132,7 @@ def execOnboardDevice(newKey, callback, display):
 	display.add_message("Advertise Device")
 
 	headers = {'content-type': 'application/json'}
-	url = makeURL('device/advertise')
+	url = makeURL('device/v1/advertise')
 	response = requests.post(url, data = data, headers = headers)
 
 	if response.status_code == 204:
@@ -167,7 +167,7 @@ def execOnboardDevice(newKey, callback, display):
 	time.sleep(2)
 
 	headers = {'content-type': 'application/json','authorization': csrt['token']}
-	url = makeURL('device/cert')
+	url = makeURL('device/v1/cert')
 	response = requests.post(url, data = data, headers = headers)
 	if response.status_code != 200:
 		display.add_message("HTTP Error: {}".format(response.http_status))
@@ -203,7 +203,7 @@ def execOnboardDevice(newKey, callback, display):
 
 	reqBody = {'deviceID': device['deviceID']}
 	data = json.dumps(reqBody)
-	url = makeURL('device/pair-complete')
+	url = makeURL('device/v1/pair-complete')
 	response = requests.post(url, data = data, headers = headers)
 	if response.status_code != 200:
 		display.add_message("error: {}".format(response.http_status))
