@@ -3,7 +3,7 @@
 HOST='protomed1'
 if [ ! -z $1 ]; then HOST=$1; fi
 
-rsync --verbose --force --rsync-path="sudo rsync" --recursive ~/github/micronets-pi/python $HOST:/etc/micronets/
-rsync --verbose --force --rsync-path="sudo rsync" --recursive ~/github/micronets-pi/config $HOST:/etc/micronets/
-rsync --verbose --force --rsync-path="sudo rsync" --recursive ~/github/micronets-pi/networks $HOST:/etc/micronets/
-rsync --verbose --force --rsync-path="sudo rsync" ~/github/micronets-pi/install/init.d/protomed $HOST:/etc/init.d/
+rsync --verbose --force --rsync-path="sudo rsync" --recursive ~/github/micronets/micronets-pi/python $HOST:/etc/micronets/
+rsync --verbose --force --rsync-path="sudo rsync" --recursive ~/github/micronets/micronets-pi/config $HOST:/etc/micronets/
+rsync --verbose --force --rsync-path="sudo rsync" --recursive ~/github/micronets/micronets-pi/networks $HOST:/etc/micronets/
+rsync --verbose --force --rsync-path="sudo rsync" ~/github/micronets/micronets-pi/install/init.d/protomed $HOST:/etc/init.d/
