@@ -10,7 +10,7 @@ from pathlib import Path
 __all__ = ["wpa_reset", "wpa_add_subscriber", "wpa_subscriber_exists"]
 
 # exposed methods
-def wpa_reset():
+def wpa_reset(all=False):
 	# remove our credentials and configuration
 	rm_silent('/etc/micronets/networks/subscriber/network.config')
 	rm_silent('/etc/micronets/networks/subscriber/ca.pem')
@@ -26,8 +26,9 @@ def wpa_reset():
 	f.close();
 
 	# add default networks
-	add_network('hotspot', 1)
-	add_network('default', 0)
+	if not all:
+		add_network('hotspot', 1)
+		add_network('default', 0)
 
 
 def wpa_subscriber_exists():

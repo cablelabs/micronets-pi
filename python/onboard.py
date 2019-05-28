@@ -220,8 +220,8 @@ def restartWifi():
 	call("sudo ifconfig wlan0 down; sudo systemctl daemon-reload; sudo systemctl restart dhcpcd; sudo ifconfig wlan0 up", shell=True)
 
 # Remove subscriber config
-def resetDevice():
-	wpa_reset()
+def resetDevice(all=False):
+	wpa_reset(all)
 	restartWifi()
 
 
