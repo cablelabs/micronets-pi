@@ -1,0 +1,17 @@
+# Ensure PiTFT screen gets turned off on shutdown, otherwise it continues to display residual desktop image
+# Note: not used with protomed device (original clinic demo)
+# /etc/systemd/system/screen_off.service
+
+[Unit]
+Description=TFT Screen Off
+Conflicts=reboot.target
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/true
+ExecStop=/usr/local/bin/screen-off.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
