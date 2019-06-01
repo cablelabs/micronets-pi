@@ -21,14 +21,18 @@ def wpa_reset(all=False):
 	f = open('/etc/wpa_supplicant/wpa_supplicant.conf', 'w')
 	f.write("ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev\n")
 	f.write("update_config=1\n")
+	# Note: 'pmf=2' REQUIRES 'ieee80211w=1' for network {} stanzas
+	f.write("pmf=2\n")
+	f.write("dpp_config_processing=2\n")
 	f.write('\n')
 
 	f.close();
 
 	# add default networks
+	all = True
 	if not all:
-		add_network('hotspot', 1)
-		add_network('default', 0)
+		add_network('hotspot', -1)
+		add_network('default', -2)
 
 
 def wpa_subscriber_exists():

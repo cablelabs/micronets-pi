@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 ############################################################
 # AdaFruit st7735 LCD 
+# This is the screen on the GEN1 device. GEN2 uses PiTFT
 ############################################################
 
 import time, atexit, sys, random, logging

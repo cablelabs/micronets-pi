@@ -1,12 +1,15 @@
 #!/usr/bin/env python
 # -*- coding: iso-8859-15 -*-
 
+# This the onscreen version of the original clinic demo. While this still works, you can also
+# use the new protodpp app, which supports both demos.
+
+
 import time, os
 from luma.core.virtual import viewport, snapshot
 from PIL import ImageFont, Image, ImageDraw
 from luma.core import cmdline, error
 from lib.wpa_supplicant import *
-import qrcode
 
 #from utils.syslogger import SysLogger
 #logger = SysLogger().logger()
@@ -17,9 +20,7 @@ import qrcode
 # This is only for the AdaFruit 128x128 display. 
 class DeviceUI(object):
 
-    def __init__(self, DPP):
-
-        self.DPP = DPP
+    def __init__(self):
 
         self.font1 = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf", 14)
         self.font2 = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf", 12)
@@ -31,13 +32,8 @@ class DeviceUI(object):
         self.linkedIcon_path = os.path.abspath(os.path.join(os.path.dirname(__file__),'images', 'linked.png'))
         self.linkedIcon = Image.open(self.linkedIcon_path).convert("RGBA")
 
-        #self.qrcode_path = os.path.abspath(os.path.join(os.path.dirname(__file__),'images', 'qr-test2.bmp'))
-        #self.qrcode = Image.open(self.qrcode_path).convert("RGBA")
-
         self.showSSID = False 
-        self.showQRC = False
         self.showSS = False # Screensaver
-        self.qrcImage = None
 
         self.messages = []
         # set up the display widgets
@@ -48,13 +44,9 @@ class DeviceUI(object):
         # Longer interval as it toggles SSID/IP
         status = snapshot(self.device.width, 25, self.render_status, interval=5.0)
 
-        #qrcode = snapshot(self.device.width, self.device.height, self.render_qrcode, interval=1.0)
-
         self.start_time = None
 
         self.virtual = viewport(self.device, width=self.device.width, height=self.device.height)
-
-        #self.virtual.add_hotspot(qrcode, (0, 0))
 
         self.virtual.add_hotspot(banner, (0, 0))
         self.virtual.add_hotspot(messages, (0, 22))
@@ -99,76 +91,58 @@ class DeviceUI(object):
         return device
 
     def refresh(self):
-        if not self.showQRC:
-            self.virtual.refresh()
-        else:
-            if self.qrcImage:
-                self.refresh_qrcode()
+        self.virtual.refresh()
 
     def render_banner(self, draw, width, height):
-        if not self.showQRC:
             l,t,r,b = self.device.bounding_box
             width = r-l
             if self.lowBattery > 0:
                 title = "Low Battery"
                 color = "red"
             else:
-                if self.DPP:
-                    left = 8
-                    title = "Micronets DPP"
-                else:
-                    left = 25
-                    title = "Micronets"
+                left = 25
+                title = "Micronets"
                 color = "blue"
             tw, th = draw.textsize(title, font=self.font1)
             draw.rectangle((l,t,r,20), outline=color, fill=color)
 
             if wpa_subscriber_exists() and self.lowBattery == 0:
-                if not self.DPP:
-                    draw.text((left, t +2 ), text=title, fill="white", font=self.font1)
-                    draw.bitmap((110,4),self.linkedIcon)
-                else:
-                    draw.text((left-2, t +2 ), text=title, fill="white", font=self.font1)
-                    draw.bitmap((112,4),self.linkedIcon)
-            else:
+                draw.text((left, t +2 ), text=title, fill="white", font=self.font1)
+                draw.bitmap((110,4),self.linkedIcon)
+           else:
                 draw.text((left+5, t +2 ), text=title, fill="white", font=self.font1)
 
-    #def render_qrcode(self, draw, width, height):
-    #    draw.bitmap((0,0),self.qrcode)
-
     def render_status(self, draw, width, height):
-        if not self.showQRC:
-            l,t,r,b = self.device.bounding_box
-            self.showSSID = not self.showSSID
-            draw.rectangle((l,t+3,r,25), outline="#004030", fill="#008030")
-            if (self.showSSID):
-                draw.text((1, t + 6), text=self.get_ssid(), fill="white", font=self.font2)
-            else:
-                draw.text((3, t + 8), text=self.get_ipaddress(), fill="white", font=self.font3)
 
-            #draw.bitmap((104,5),self.wifiIcon)
-            draw.bitmap((108,7),self.wifiIcon)
+        l,t,r,b = self.device.bounding_box
+        self.showSSID = not self.showSSID
+        draw.rectangle((l,t+3,r,25), outline="#004030", fill="#008030")
+        if (self.showSSID):
+            draw.text((1, t + 6), text=self.get_ssid(), fill="white", font=self.font2)
+        else:
+            draw.text((3, t + 8), text=self.get_ipaddress(), fill="white", font=self.font3)
+
+        draw.bitmap((108,7),self.wifiIcon)
 
     def render_messages(self, draw, width, height):
-        if not self.showQRC:
-            draw.rectangle((0, 0, width, height), fill="black")
+        draw.rectangle((0, 0, width, height), fill="black")
 
-            start = 0
-            items = len(self.messages)
-            if len(self.messages) > 6:
-                start = len(self.messages) - 6
-                items = 6
+        start = 0
+        items = len(self.messages)
+        if len(self.messages) > 6:
+            start = len(self.messages) - 6
+            items = 6
 
-            for i in range(items):
-                index = start + i
-                text = u"\u2022 {}".format(self.messages[index])
-                draw.text((0, (i*13)+1), text=text, fill="white", font=self.font2)
+        for i in range(items):
+            index = start + i
+            text = u"\u2022 {}".format(self.messages[index])
+            draw.text((0, (i*13)+1), text=text, fill="white", font=self.font2)
 
-            if self.start_time != None:
-                curr_time = time.time()
-                if (curr_time - self.start_time) > 30:
-                    self.start_time = None
-                    self.clear_messages()
+        if self.start_time != None:
+            curr_time = time.time()
+            if (curr_time - self.start_time) > 30:
+                self.start_time = None
+                self.clear_messages()
 
     def clear_messages(self):
         self.messages[:] = []
@@ -188,29 +162,6 @@ class DeviceUI(object):
     def setLowBattery(self, count):
         self.lowBattery = count
 
-    def show_qrcode(self, data):
-        self.showQRC = True
-        qr = qrcode.QRCode(
-            version=4,
-            error_correction=qrcode.constants.ERROR_CORRECT_L,
-            box_size=3,
-            border=2,
-        )
-        qr.add_data(data)
-        qr.make(fit=True)
-
-        self.qrcImage = qr.make_image(fill_color="black", back_color="white").convert("RGBA")
-        self.refresh_qrcode()
-
-    def refresh_qrcode(self):
-        background = Image.new("RGBA", self.device.size, "white")
-        posn = ((self.device.width - self.qrcImage.width) // 2, 0)
-        background.paste(self.qrcImage, posn)
-        self.device.display(background.convert(self.device.mode))
-
-    def clear_qrcode(self):
-        self.showQRC = False
-
     def get_ipaddress(self):
         fields = os.popen("ifconfig wlan0 | grep 'inet '").read().strip().split(" ")
         ipaddress = "NO IP ADDRESS"
@@ -226,33 +177,18 @@ class DeviceUI(object):
 if __name__ == '__main__':
     from pio.gbutton import GButton
     buttonMode = GButton(9)
-    DPP = buttonMode.is_set()
-    #DPP = True
 
     try:
-        display = DeviceUI(DPP)
+        display = DeviceUI()
         i = 0
-        if DPP:
-            while True:
-                i = (i+1) % 11
-                if i == 0:
-                    display.clear_messages()
-                elif i == 1:
-                    display.show_qrcode('DPP:C:81/1,115/36;K:MDkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDIgADM2206avxHJaHXgLMkq/24e0rsrfMP9K1Tm 8gx+ovP0I=;;')
-                elif i > 4:
-                    display.clear_qrcode()
-                    display.add_message("message {}".format(i-4))
-                display.refresh()
-                time.sleep(1)
-        else:
-            while True:
-                i = (i+1) % 7
-                if i == 0:
-                    display.clear_messages()
-                else:
-                    display.add_message("message {}".format(i))
-                display.refresh()
-                time.sleep(1)
+        while True:
+            i = (i+1) % 7
+            if i == 0:
+                display.clear_messages()
+            else:
+                display.add_message("message {}".format(i))
+            display.refresh()
+            time.sleep(1)
 
     except KeyboardInterrupt:
         pass

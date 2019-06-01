@@ -17,11 +17,7 @@ from device_ui import DeviceUI
 from screensaver import ScreenSaver
 
 buttonMode = GButton(9)
-DPP = buttonMode.is_set()
-if DPP:
-    from onboard_dpp import *
-else:
-    from onboard import *
+from onboard import *
 
 ############################################################
 # GPIO 
@@ -32,7 +28,7 @@ restoring = False
 onboarding = False
 batteryLow = 0
 
-display = DeviceUI(DPP)
+display = DeviceUI()
 
 screenSaver = ScreenSaver(display.device, 60)
 
@@ -185,7 +181,8 @@ def begin_onboard():
     ledOnboard.blink(.1)
     context['onboarding'] = True
 
-    newKey = False
+    # Read clear private key switch
+    newKey = buttonMode.is_set()    
     thr = threading.Thread(target=onboardDevice, args=(newKey, end_onboard, display,)).start()
 
 def onboard_canceled():

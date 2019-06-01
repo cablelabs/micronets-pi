@@ -15,7 +15,8 @@ TODO:
  - need wpa_adapter implemented to receive DPP state notifications - auth begin, auth complete, config begin, config complete, STA associated.
  - display above state changes in progress window
  - finish/test clinic mode
- - fix header/footer icons
+ - fix header/footer icon
+ - keys should be moved out of config.json - someplace like 
 '''
 
 import qrcode
@@ -36,6 +37,10 @@ placements = {}
 
 window = Tk()
 window.title("ProtoDPP")
+
+DISP_SSID = 0
+DISP_WIFI_IP = 1
+DISP_ETHERNET_IP = 2
 
 full_w = 320
 full_h = 240
@@ -70,6 +75,13 @@ default_channel = 1
 default_channel_class = 81
 default_mode = "dpp"
 default_countdown = 30
+# proxy settings are used when simulating the iphone mobile application (click on qrcode)
+default_proxy_mso_portal = "https://mso-portal-api.micronets.in"
+default_proxy_username = "grandma"
+default_proxy_password = "grandma"
+default_proxy_device_uid = "AgoNDQcDDgg"
+qrcode_data = None
+
 countdown = 0
 canExit = False
 
@@ -217,6 +229,31 @@ wifiIcon = Label(window, image=icon2)
 wifiIcon.place(x=icon_l, y=210, width=24, height=24)
 wifiIcon['bg'] = footer['bg']
 
+def get_mac():
+    mac = os.popen("cat /sys/class/net/wlan0/address").read().strip()
+    return mac
+
+def destroy_qrcode():
+    hide_widget(qrcode_frame)
+    hide_widget(qrcode_image)
+    qrcode_image.place_forget()
+
+def clicked_qrcode(null_arg=0):
+    pass
+#    print "clicked qrcode"
+
+    # hide qrcode so we can see progress messages
+#    destroy_qrcode()
+
+#    add_message("Clicked QRCode")
+    
+    # ensure we are connected to a network (wifi or ethernet)
+#   if get_wifi_ipaddress() or get_ethernet_ipaddress():
+        # execute proxy script (simulates iphone scanning qrcode)
+#        thr = threading.Thread(target=dpp_onboard_proxy, args=(config, get_mac(), qrcode_data, add_message,)).start()
+#    else:
+#        add_message("Network connection required")
+
 def display_qrcode(data):
 
     # show parent
@@ -246,15 +283,11 @@ def display_qrcode(data):
     qrcode_image.saveicon = qrcode_image   # otherwise it disappears
     qrcode_image.savephoto = photo
 
-
-def destroy_qrcode():
-    hide_widget(qrcode_frame)
-    hide_widget(qrcode_image)
-    qrcode_image.place_forget()
-    #qrcode_image = None
+    # add click handler to run onboard script(testing)
+    qrcode_image.bind("<Button-1>", clicked_qrcode)
 
 # Demented python scoping.
-context = {'restoring':False, 'onboarding':False, 'showSSID':True}
+context = {'restoring':False, 'onboarding':False, 'net_display':DISP_SSID}
 
 def status_message(message):
     add_message(message)
@@ -293,10 +326,14 @@ def update_mode():
         header.config(bg="teal")
     mode_icon['bg'] = header['bg']
 
-def config_default(key, default):
+def config_default(key, default, dictionary=None):
+
     global config
-    if not config.get(key):
-        config[key] = default
+    if dictionary == None:
+        dictionary = config
+    
+    if not dictionary.get(key):
+        dictionary[key] = default
 
 
 def save_config():
@@ -329,6 +366,17 @@ def load_config():
     config_default('channelClass', default_channel_class)
     config_default('countdown', default_countdown)
 
+    config_default('dppProxy', {})
+    config_default('msoPortalUrl', default_proxy_mso_portal, config['dppProxy'])
+    config_default('username', default_proxy_username, config['dppProxy'])
+    config_default('password', default_proxy_password, config['dppProxy'])
+    config_default('deviceModelUID', default_proxy_device_uid, config['dppProxy'])
+
+    #default_proxy_mso_portal = "https://mso-portal-api.micronets.in"
+    #default_proxy_username = grandma
+    #default_proxy_password = grandma
+    #default_proxy_device_uid = "AgoNDQcDDgg"
+
     # save defaults
     save_config()
 
@@ -348,21 +396,25 @@ def restore_defaults(null_arg=0):
     add_message("reset device..")
     resetDevice(config['mode'] == 'dpp')
 
-def get_ipaddress():
+def get_wifi_ipaddress():
     fields = os.popen("ifconfig wlan0 | grep 'inet '").read().strip().split(" ")
-    #fields = os.popen("ifconfig eth0 | grep 'inet '").read().strip().split(" ")
-    ipaddress = "NO IP ADDRESS"
+    ipaddress = None
     if len(fields) >= 2:
         ipaddress = fields[1]
     return ipaddress
 
+def get_ethernet_ipaddress():
+    fields = os.popen("ifconfig eth0 | grep 'inet '").read().strip().split(" ")
+    ipaddress = None
+    if len(fields) >= 2:
+        ipaddress = fields[1]
+    return ipaddress
+
+
+
 def get_ssid():
     ssid = os.popen("iwconfig wlan0 | grep 'ESSID'| awk '{print $4}' | awk -F\\\" '{print $2}'").read().strip()
     return ssid
-
-def get_mac():
-    mac = os.popen("cat /sys/class/net/wlan0/address").read().strip()
-    return mac
 
 def generate_dpp_uri():
 
@@ -432,9 +484,7 @@ def onboard_countdown():
         countdown_timer.start()
 
 def onboard_dpp():
-    global countdown, countdown_timer
-    # generate uri
-    # display qrcode
+    global countdown, countdown_timer, qrcode_data
     hide_widget(header)
     hide_widget(footer)
     hide_widget(mode_icon)
@@ -445,9 +495,11 @@ def onboard_dpp():
     show_widget(countdown_button)
 
     #data = "DPP:C:81/1;I:SUNG;M:6a:00:02:d2:e8:50;K:MDkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDIgACDIBBiMf4W+tukQcNKz5eObkMp3tNPFJRvBhE1sop3K0=;;"
-    data = generate_dpp_uri()
+    qrcode_data = generate_dpp_uri()
 
-    display_qrcode(data)
+    display_qrcode(qrcode_data)
+
+    dpp_listen()
 
     # countdown TODO
     countdown = config["countdown"]
@@ -479,6 +531,7 @@ def cancel_onboard(null_arg=0):
     hide_widget(countdown_button)
     if config['mode'] == 'dpp':
         destroy_qrcode()
+        dpp_stop_listen()
     if countdown_timer != None:
         countdown_timer.cancel()
 
@@ -627,10 +680,27 @@ footer.config(text='')
 
 def updateTimer():
     ssid = get_ssid()
-    if (context['showSSID']):
+    wifi_ip = get_wifi_ipaddress()
+    ethernet_ip = get_ethernet_ipaddress()
+
+    if (context['net_display'] == DISP_SSID):
         footer.config(text=ssid)
+        context['net_display'] = DISP_WIFI_IP
+    elif (context['net_display'] == DISP_WIFI_IP):
+        if (wifi_ip):
+            footer.config(text=wifi_ip)
+        else:
+            footer.config(text="NO IP ADDRESS")
+        context['net_display'] = DISP_ETHERNET_IP
     else:
-        footer.config(text=get_ipaddress())
+        # We use a wired connection for debug/testing (and for using the configurator proxy (dpp_proxy.py))
+        if (ethernet_ip):
+            footer.config(text="ETH: "+ ethernet_ip)
+            context['net_display'] = DISP_SSID
+        else:
+            # Skip ahead to SSID
+            footer.config(text=ssid)
+            context['net_display'] = DISP_WIFI_IP
 
     if (ssid == None or ssid == ""):
         hideWifi()
@@ -644,7 +714,6 @@ def updateTimer():
         hideLinked()
         showLinked()
 
-    context['showSSID'] = not context['showSSID']
     window.after(4000,updateTimer)
 
     if time.time() - last_message_time > 30:
@@ -675,22 +744,7 @@ GPIO.add_event_detect(22, GPIO.FALLING, callback=cycle, bouncetime=200)
 GPIO.add_event_detect(23, GPIO.FALLING, callback=toggle_settings, bouncetime=200)
 GPIO.add_event_detect(27, GPIO.BOTH, callback=shutdown_event, bouncetime=200)
 
- 
-#try:
-#    GPIO.wait_for_edge(17, GPIO.FALLING)
-#    print "Exit button pressed."
-# 
-#except:
-#    pass
-
-# save screen, turn off backlight for now..
-#toggle_backlight(0)
- 
-# exit gracefully
-#backlight.stop()
-#GPIO.cleanup()
-
-# turn off cursor
+# turn off cursor (ymmv, sometimes displays edit cursor)
 window.config(cursor="none")
 
 def enableExit():

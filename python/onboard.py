@@ -217,7 +217,8 @@ def removeKey():
 	deleteKey(keyName, keyPath)
 
 def restartWifi():
-	call("sudo ifconfig wlan0 down; sudo systemctl daemon-reload; sudo systemctl restart dhcpcd; sudo ifconfig wlan0 up", shell=True)
+	#call("sudo ifconfig wlan0 down; sudo systemctl daemon-reload; sudo systemctl restart dhcpcd; sudo ifconfig wlan0 up", shell=True)
+	call("sudo systemctl restart dhcpcd", shell=True)
 
 # Remove subscriber config
 def resetDevice(all=False):
