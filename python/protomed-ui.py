@@ -9,9 +9,22 @@ from lib.wpa_supplicant import *
 import PIL.Image
 import PIL.ImageTk
 
+# This the onscreen version of the original clinic demo. While this still works, you can also
+# use the new protodpp app, which supports both demos.
+
 window = Tk()
 window.title("Protomed Simulator")
 
+# This is just so onboard.py has an object with add_message. This broke when I updated the protomed.py code.
+class DisplayWrapper(object):
+
+    def __init__(self):
+        pass
+
+    def add_message(self, message):
+        add_message(message)
+
+display = DisplayWrapper()
 
 window.geometry("400x560")
 window.resizable(0,0)
@@ -106,7 +119,7 @@ def begin_onboard():
     #newKey = buttonMode.is_set()
     #print "newKey: {}".format(newKey)
     newKey = False
-    thr = threading.Thread(target=onboardDevice, args=(newKey, end_onboard, status_message,)).start()
+    thr = threading.Thread(target=onboardDevice, args=(newKey, end_onboard, display,)).start()
 
 def onboard():
     print "onboard clicked"

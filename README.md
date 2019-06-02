@@ -59,7 +59,9 @@ Starting from a bare Raspbian installation, here is an edited history file detai
 	sudo pip install --upgrade RPi.GPIO
 	### add ssh certificate for ssh login
 	sudo apt-get install wpa_supplicant
-	### install luma display drivers: https://luma-lcd.readthedocs.io/en/latest/
+	### install luma display drivers: 
+		- https://luma-lcd.readthedocs.io/en/latest/ (st7735)
+		- https://luma-oled.readthedocs.io/en/latest/install.html (ssd1351)
 	### install protomed application (elsewhere in this document)
 	sudo update-rc.d protomed defaults
 	sudo reboot

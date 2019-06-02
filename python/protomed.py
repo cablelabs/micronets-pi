@@ -27,26 +27,15 @@ GPIO.setmode(GPIO.BCM)
 restoring = False
 onboarding = False
 batteryLow = 0
+cmdline = False
 
-display = DeviceUI()
+null_device = True
+display = DeviceUI(null_device)
 
 screenSaver = ScreenSaver(display.device, 60)
 
 # Demented python scoping.
 context = {'restoring':False, 'onboarding':False, 'restarting': False}
-
-def clickOnboard():
-    print "click onboard"
-    if not screenSaver.isActive():
-        if context['onboarding']:
-            display.clear_messages()
-            display.add_message("Canceling..")
-            display.refresh()
-
-            cancel_onboard()
-        else: 
-            begin_onboard()
-            context['onboarding'] = True
 
 def clickReset():
     restore_defaults()
@@ -137,19 +126,6 @@ def lowBattery():
     display.add_message("Low Battery!!!")
     batteryLow = 60
 
-buttonOnboard = GButton(22, False)
-buttonOnboard.set_callback(clickOnboard)
-
-buttonReset = GButton(7)
-buttonReset.set_callback(clickReset)
-
-buttonShutdown = GButton(18, True)
-buttonShutdown.set_callback(shutdown)
-
-buttonLowBattery = GButton(15)
-buttonLowBattery.set_callback(lowBattery)
-
-
 # LED pin 25
 
 ledOnboard = GLed(17)
@@ -204,6 +180,35 @@ def set_state():
         ledOnboard.on()
     else:
         ledOnboard.off()
+
+def clickOnboard():
+    print "click onboard"
+    if not screenSaver.isActive():
+        if context['onboarding']:
+            display.clear_messages()
+            display.add_message("Canceling..")
+            display.refresh()
+
+            cancel_onboard()
+        else: 
+            begin_onboard()
+            context['onboarding'] = True
+
+if null_device:
+    clickOnboard()
+
+buttonOnboard = GButton(22, False)
+buttonOnboard.set_callback(clickOnboard)
+
+buttonReset = GButton(7)
+buttonReset.set_callback(clickReset)
+
+buttonShutdown = GButton(18, True)
+buttonShutdown.set_callback(shutdown)
+
+buttonLowBattery = GButton(15)
+buttonLowBattery.set_callback(lowBattery)
+
 
 ############################################################
 # LED Display
