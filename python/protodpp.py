@@ -19,6 +19,18 @@ TODO:
  - keys should be moved out of config.json - someplace like 
 '''
 
+# This is just so onboard.py has an object with add_message.
+class DisplayWrapper(object):
+
+    def __init__(self):
+        pass
+
+    def add_message(self, message):
+        add_message(message)
+
+display = DisplayWrapper()
+
+
 import qrcode
 import json
 
@@ -470,7 +482,7 @@ def begin_onboard():
     context['onboarding'] = True
     onboard_button.config(text='Cancel')
     newKey = False
-    thr = threading.Thread(target=onboardDevice, args=(newKey, end_onboard, status_message,)).start()
+    thr = threading.Thread(target=onboardDevice, args=(newKey, end_onboard, display,)).start()
 
 def onboard_countdown():
     global countdown
@@ -514,7 +526,7 @@ def onboard_clinic():
         clear_messages()
         add_message("Canceling..")
  
-        thr = threading.Thread(target=cancelOnboard, args=(status_message,)).start()
+        thr = threading.Thread(target=cancelOnboard, args=(display,)).start()
 
     else: 
         begin_onboard()

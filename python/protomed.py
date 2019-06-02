@@ -29,7 +29,11 @@ onboarding = False
 batteryLow = 0
 cmdline = False
 
-null_device = True
+# To test onboarding without the OLED display (GEN 1 configuration), set null_device to True and run protomed.py from cmdline
+# cd /etc/micronets/python
+# sudo python protomed.py
+
+null_device = False
 display = DeviceUI(null_device)
 
 screenSaver = ScreenSaver(display.device, 60)
