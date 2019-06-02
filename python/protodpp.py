@@ -8,6 +8,7 @@ from Tkinter import *
 from lib.wpa_supplicant import *
 import PIL.Image
 import PIL.ImageTk
+from dpp_proxy import *
 
 '''
 TODO:
@@ -251,20 +252,20 @@ def destroy_qrcode():
     qrcode_image.place_forget()
 
 def clicked_qrcode(null_arg=0):
-    pass
-#    print "clicked qrcode"
+
+    print "clicked qrcode"
 
     # hide qrcode so we can see progress messages
-#    destroy_qrcode()
+    destroy_qrcode()
 
-#    add_message("Clicked QRCode")
+    add_message("Clicked QRCode")
     
     # ensure we are connected to a network (wifi or ethernet)
-#   if get_wifi_ipaddress() or get_ethernet_ipaddress():
+    if get_wifi_ipaddress() or get_ethernet_ipaddress():
         # execute proxy script (simulates iphone scanning qrcode)
-#        thr = threading.Thread(target=dpp_onboard_proxy, args=(config, get_mac(), qrcode_data, add_message,)).start()
-#    else:
-#        add_message("Network connection required")
+        thr = threading.Thread(target=dpp_onboard_proxy, args=(config, get_mac(), qrcode_data, display,)).start()
+    else:
+        add_message("Network connection required")
 
 def display_qrcode(data):
 
@@ -464,6 +465,7 @@ def dpp_listen():
 
 def dpp_stop_listen():
     print "** dpp_stop_listen **"
+    cmd = "sudo wpa_cli dpp_stop_listen"
     result = os.popen(cmd).read().strip()
     print result
 
@@ -542,7 +544,8 @@ def cancel_onboard(null_arg=0):
     hide_widget(cancel_button)
     hide_widget(countdown_button)
     if config['mode'] == 'dpp':
-        destroy_qrcode()
+        if qrcode_image:
+            destroy_qrcode()
         dpp_stop_listen()
     if countdown_timer != None:
         countdown_timer.cancel()
@@ -584,6 +587,8 @@ def reboot(nullarg=0):
 
 def exit_app(nullarg=0):
     print "exit"
+    if shutdown_timer != None:
+        shutdown_timer.cancel()
     exit()
 
 # Timer fired.
@@ -615,8 +620,6 @@ def shutdown_released(nullarg=0):
         if canExit:
             add_message("Restarting Application..")
             #exit_app()
-            #subprocess.call("sudo systemctl restart lightdm")
-
             print os.popen("sudo systemctl restart lightdm")
 
         # This restarts the desktop, which restarts the application.
