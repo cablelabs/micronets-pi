@@ -760,7 +760,8 @@ GPIO.add_event_detect(23, GPIO.FALLING, callback=toggle_settings, bouncetime=200
 GPIO.add_event_detect(27, GPIO.BOTH, callback=shutdown_event, bouncetime=200)
 
 # turn off cursor (ymmv, sometimes displays edit cursor)
-window.config(cursor="none")
+if not config['showCursor']:
+    window.config(cursor="none")
 
 def enableExit():
     global canExit
