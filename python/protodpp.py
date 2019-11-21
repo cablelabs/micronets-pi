@@ -100,6 +100,10 @@ canExit = False
 
 chan_freqs = {1:2412, 2:2417, 3:2422, 4:2427, 5:2432, 6:2437, 7:2442, 8:2447, 9:2452, 10:2457, 11:2462, 12:2467, 13:2472, 14:2484}
 
+# New fireworks splash for comcast, displayed after connect.
+fireworks_frame = None
+fireworks_image = None
+
 ############################################################################
 # list of BCM channels from RPO.GPIO (printed on the Adafruit PCB next to each button)
 channel_list = [17, 22, 23, 27]
@@ -226,6 +230,10 @@ place_widget(settings,0, banner_h, main_w, main_h, False)
 qrcode_frame = Frame(window, background="white", borderwidth=0, relief="solid")
 place_widget(qrcode_frame,0, 0, main_w, full_h, False)
 
+# fireworks window
+fireworks_frame = Frame(window, background="white", borderwidth=0, relief="solid")
+place_widget(fireworks_frame,0, 0, full_w, full_h, False)
+
 # Footer
 footer_t = banner_h + main_h
 footer = Label(window, text="IP: 10.252.232.112", fg="white", bg="gray20")
@@ -267,7 +275,43 @@ def clicked_qrcode(null_arg=0):
     else:
         add_message("Network connection required")
 
+def display_fireworks():
+
+    global fireworks_image
+
+    file_path = os.path.abspath(os.path.join(os.path.dirname(__file__),'images', 'fireworks320-01.gif'))
+
+    gif = PIL.Image.open(file_path, 'r')
+    frames = []
+    try:
+        while 1:
+            frames.append(gif.copy())
+            gif.seek(len(frames))
+    except EOFError:
+        pass
+
+    show_widget(fireworks_frame)
+
+    while 1:
+        for frame in frames:
+            #canvas.paste(frame)
+            #canvas.show()
+            photo = PIL.ImageTk.PhotoImage(frame)
+            fireworks_image = Label(window, image=photo)
+            place_widget(fireworks_image,0, 0, full_w, full_h)
+
+            fireworks_image['bg'] = fireworks_frame['bg']
+            fireworks_image.saveicon = fireworks_image   # otherwise it disappears
+            fireworks_image.savephoto = photo
+
+            time.sleep(0.1)
+
+    hide_widget(fireworks_frame)
+
 def display_qrcode(data):
+
+    #display_fireworks()
+    thr = threading.Thread(target=display_fireworks, args=()).start()
 
     # show parent
     show_widget(qrcode_frame)
@@ -298,6 +342,7 @@ def display_qrcode(data):
 
     # add click handler to run onboard script(testing)
     qrcode_image.bind("<Button-1>", clicked_qrcode)
+
 
 # Demented python scoping.
 context = {'restoring':False, 'onboarding':False, 'net_display':DISP_SSID}
