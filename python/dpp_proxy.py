@@ -11,6 +11,12 @@ import json
 import requests
 import os, sys, time, traceback
 from subprocess import call
+from utils.syslogger import SysLogger
+
+
+# Logfile is /tmp/protodpp.log
+logger = SysLogger().logger()
+
 
 def makeURL(host, path):
 	url = "{}/portal/v1/dpp/{}".format(host, path)
@@ -18,7 +24,7 @@ def makeURL(host, path):
 
 def exec_dpp_onboard_proxy(config, mac, dpp_uri, display):
 
-	print "exec_dpp_onboard_proxy"
+	logger.info("exec_dpp_onboard_proxy")
 
 	session = requests.session()
 
@@ -34,7 +40,7 @@ def exec_dpp_onboard_proxy(config, mac, dpp_uri, display):
 	headers = {'content-type': 'application/json'}
 	url = makeURL(host, 'login')
 
-	print "Login: " + url
+	logger.info("Login: " + url)
 
 	reqBody = {'username': username, 'password': password}
 	data = json.dumps(reqBody)
@@ -49,7 +55,7 @@ def exec_dpp_onboard_proxy(config, mac, dpp_uri, display):
 	# Check Session
 	url = makeURL(host, 'session')
 
-	print "Session: " + url
+	logger.info("Session: " + url)
 
 	response = session.get(url)
 
@@ -63,7 +69,7 @@ def exec_dpp_onboard_proxy(config, mac, dpp_uri, display):
 	#curl -L "https://registry.micronets.in/mud/v1/mud-file/DAWG/MDkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDIgACDIBBiMf4W+tukQcNKz5eObkMp3tNPFJRvBhE1sop3K0="
 	url = "https://registry.micronets.in/mud/v1/mud-file/{}/{}".format(vendor_code, pubkey)
 
-	print "MUD: " + url
+	logger.info("MUD: " + url)
 
 	response = session.get(url)
 
@@ -85,7 +91,7 @@ def exec_dpp_onboard_proxy(config, mac, dpp_uri, display):
 
 	url = makeURL(host, 'onboard')
 
-	print "Onboard: " + url
+	logger.info("Onboard: " + url)
 
 	headers = {'content-type': 'application/json'}
 
@@ -114,12 +120,12 @@ def exec_dpp_onboard_proxy(config, mac, dpp_uri, display):
 	# wait for status to accumulate
 	#time.sleep(5)
 	url = makeURL(host, 'status')
-	print "Status: " + url
+	logger.info("Status: " + url)
 
 	response = session.get(url)
 
-	print "status: {}".format(response.status_code)
-	print response.json()
+	logger.info("status: {}".format(response.status_code))
+	logger.info(response.json())
 
 	if response.status_code != 200:
 		display.add_message("Status failed")
@@ -128,7 +134,7 @@ def exec_dpp_onboard_proxy(config, mac, dpp_uri, display):
 	# Logout
 	url = makeURL(host, 'logout')
 
-	print "Logout: " + url
+	logger.info("Logout: " + url)
 
 	response = session.post(url)
 
@@ -143,8 +149,8 @@ def dpp_onboard_proxy(config, mac, uri, display):
 		exec_dpp_onboard_proxy(config, mac, uri, display)
 	except Exception as e:
 		display.add_message("!! {}".format(e.__doc__))
-		print e.__doc__
-		print e.message
-		print '-'*60
-        traceback.print_exc(file=sys.stdout)
-        print '-'*60
+		logger.error(e.__doc__)
+		logger.error(e.message)
+		logger.error('-'*60)
+        logger.error(traceback.print_exc())
+        logger.error('-'*60)

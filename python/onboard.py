@@ -6,6 +6,8 @@ from OpenSSL import crypto, SSL
 import os, sys, time, traceback
 from subprocess import call
 
+from utils.syslogger import SysLogger
+
 import base64
 from uuid import getnode as get_mac
 
@@ -13,6 +15,9 @@ from lib.ecc_keys import *
 from lib.wpa_supplicant import *
 
 import pprint
+
+# Logfile is /tmp/protodpp.log
+logger = SysLogger().logger()
 
 # key names/location
 keyPath = '../ssl'
@@ -48,7 +53,7 @@ def makeURL(path):
 	try:
 		registrationConfig = os.path.join(fileDir, '../config/thisRegistration.json')
 		fileData = open(registrationConfig).read()
-		print 'fileData: {}'.format(fileData)
+		logger.info('fileData: {}'.format(fileData))
 		registration = json.loads(fileData)
 		pprint.pprint(registration)
 		host = registration['url']
@@ -64,11 +69,11 @@ def cancelOnboard(display, callback):
 		execCancelOnboard(display, callback)
 	except Exception as e:
 		display.add_message("!! {}".format(e.__doc__))
-		print e.__doc__
-		print e.message
-		print '-'*60
-        traceback.print_exc(file=sys.stdout)
-        print '-'*60
+		logger.error(e.__doc__)
+		logger.error(e.message)
+		logger.error('-'*60)
+        logger.error(traceback.print_exc())
+        logger.error('-'*60)
 
 
 def execCancelOnboard(display, callback):
@@ -79,7 +84,7 @@ def execCancelOnboard(display, callback):
 	data = json.dumps(body)
 	url = makeURL('device/v1/cancel')
 	response = requests.post(url, data = data, headers = headers)
-	print "response received from device/v1/cancel"
+	logger.info("response received from device/v1/cancel")
 	callback()
 
 def onboardDevice(newKey, callback, display):
@@ -88,18 +93,18 @@ def onboardDevice(newKey, callback, display):
 	except Exception as e:
 		callback(e.__doc__)
 		display.add_message("!! {}".format(e.__doc__))
-		print e.__doc__
-		print e.message
-		print '-'*60
-        traceback.print_exc(file=sys.stdout)
-        print '-'*60
+		logger.error(e.__doc__)
+		logger.error(e.message)
+		logger.error('-'*60)
+        logger.error(traceback.print_exc())
+        logger.error('-'*60)
 
 def execOnboardDevice(newKey, callback, display):
 	global deviceID
 
 	if newKey == True:
 		deleteKey(keyName, keyPath)
-		print "generating new key pair"
+		logger.info("generating new key pair")
 		display.add_message("Generate Keys")
 
 
@@ -128,7 +133,7 @@ def execOnboardDevice(newKey, callback, display):
 	# Save in case we cancel
 	deviceID = device['deviceID']
 
-	print "advertising device:\n{}".format(data)
+	logger.info("advertising device:\n{}".format(data))
 	display.add_message("Advertise Device")
 
 	headers = {'content-type': 'application/json'}
@@ -148,8 +153,8 @@ def execOnboardDevice(newKey, callback, display):
 	# Update: not even using keytype at the moment. Defaulting to ECC
 	# keySpec = csrt['csrTemplate']['keyType'].split(":")
 
-	print "received csrt: {}".format(response)
-	print "token: {}".format(csrt['token'])
+	logger.info("received csrt: {}".format(response))
+	logger.info("token: {}".format(csrt['token']))
 
 	# Generate a CSR
 	csr = generateCSR(private_key, csrName, keyPath)
@@ -160,7 +165,7 @@ def execOnboardDevice(newKey, callback, display):
 	    reqBody['csr'] = base64.b64encode(csr_file.read())
 	data = json.dumps(reqBody)
 	
-	print "submitting CSR"
+	logger.info("submitting CSR")
 	display.add_message("Submitting CSR")
 
 	# Sleeps are for demo visual effect. Can be removed.
@@ -175,7 +180,7 @@ def execOnboardDevice(newKey, callback, display):
 
 	# Parse out reply and set up wpa configuration
 	reply = response.json()
-	print response.json()
+	logger.info(response.json())
 
 	display.add_message ("Rcvd Credentials")
 	time.sleep(2)
@@ -187,16 +192,16 @@ def execOnboardDevice(newKey, callback, display):
 	wifi_cert = base64.b64decode(wifi_cert64);
 	ca_cert = base64.b64decode(ca_cert64);
 
-	print "ssid: {}".format(ssid)
-	print "wifi_cert: {}".format(wifi_cert)
-	print "ca_cert: {}".format(ca_cert)
+	logger.info("ssid: {}".format(ssid))
+	logger.info("wifi_cert: {}".format(wifi_cert))
+	logger.info("ca_cert: {}".format(ca_cert))
 
 	if hasattr(reply, 'passphrase'):
 		passphrase = reply['passphrase']
 	else:
 		passphrase = "whatever"
 
-	print "configuring wpa_supplicant"
+	logger.info("configuring wpa_supplicant")
 	wpa_add_subscriber(ssid, ca_cert, wifi_cert, wifi_cert, passphrase, 'micronets')
 	display.add_message("Configuring WiFi")
 	time.sleep(2)
@@ -227,17 +232,17 @@ def resetDevice(all=False):
 
 
 def localDevlog(msg):
-	print "message: {}".format(msg)
+	logger.info("message: {}".format(msg))
 
 def localEndOnboard(msg):
-	print "End Onboard: {}".format(msg)
+	logger.info("End Onboard: {}".format(msg))
 
 if __name__ == '__main__':
 
 	if len(sys.argv) > 1 and sys.argv[1] == 'reset':
-		print "reset"
+		logger.info("reset")
 		resetDevice()
 	else:
-		print "Onboarding"
+		logger.info("Onboarding")
 		newKey = len(sys.argv) > 1 and sys.argv[1] == 'newkey'
 		onboardDevice(newKey, localEndOnboard, localDevlog)

@@ -9,6 +9,10 @@ from lib.wpa_supplicant import *
 import PIL.Image
 import PIL.ImageTk
 
+
+# Logfile is /tmp/protodpp.log
+logger = SysLogger().logger()
+
 # This the onscreen version of the original clinic demo. While this still works, you can also
 # use the new protodpp app, which supports both demos.
 
@@ -85,7 +89,7 @@ def set_state():
 
 
 def restore_defaults():
-    print "restore defaults"
+    logger.info("restore defaults")
     clear_messages()
     add_message("Restore Defaults")
 
@@ -94,13 +98,13 @@ def restore_defaults():
     resetDevice()
 
 def restore_complete():
-    print "end restore"
+    logger.info("end restore")
     display.add_message("Restore Complete")
     restoring = False
     set_state()
 
 def end_onboard(status):
-    print "end onboard: {}".format(status)
+    logger.info("end onboard: {}".format(status))
     add_message(status)
     context['onboarding'] = False
     onboard_button.config(text='Onboard')
@@ -108,7 +112,7 @@ def end_onboard(status):
     set_state()
 
 def begin_onboard():
-    print "begin onboard"
+    logger.info("begin onboard")
     clear_messages()
     add_message("Begin Onboard")
     #ledOnboard.blink(.1)
@@ -117,12 +121,12 @@ def begin_onboard():
 
     # Read clear private key switch
     #newKey = buttonMode.is_set()
-    #print "newKey: {}".format(newKey)
+    #logger.info("newKey: {}".format(newKey))
     newKey = False
     thr = threading.Thread(target=onboardDevice, args=(newKey, end_onboard, display,)).start()
 
 def onboard():
-    print "onboard clicked"
+    logger.info("onboard clicked")
     if context['onboarding']:
         clear_messages()
         add_message("Canceling..")
@@ -146,7 +150,7 @@ def hideWifi():
 	wifiIcon.place(x=-40, y=349, width=24, height=24)
 
 def reset():
-    print "wifi credentials reset"
+    logger.info("wifi credentials reset")
     clear_messages()
     add_message("Restore Defaults")
 
@@ -161,7 +165,7 @@ def cycle():
     restartWifi()
 
 def exit_app():
-    print "exit"
+    logger.info("exit")
     exit()
 
 def get_ipaddress():

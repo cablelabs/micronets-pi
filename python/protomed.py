@@ -19,6 +19,9 @@ from screensaver import ScreenSaver
 buttonMode = GButton(9)
 from onboard import *
 
+# Logfile is /tmp/protodpp.log
+logger = SysLogger().logger()
+
 ############################################################
 # GPIO 
 ############################################################
@@ -46,7 +49,7 @@ def clickReset():
 
 def shutdown():
     if not screenSaver.isActive():
-        print "click shutdown"
+        logger.info("click shutdown")
 
         count = 0
         kill = False
@@ -135,7 +138,7 @@ def lowBattery():
 ledOnboard = GLed(17)
 
 def restore_defaults():
-    print "restore defaults"
+    logger.info("restore defaults")
     display.clear_messages()
     display.add_message("Restore Defaults")
 
@@ -144,7 +147,7 @@ def restore_defaults():
     resetDevice()
 
 def restore_complete():
-    print "end restore"
+    logger.info("end restore")
     display.add_message("Restore Complete")
     restoring = False
     set_state()
@@ -155,7 +158,7 @@ def cancel_onboard():
     set_state()
 
 def begin_onboard():
-    print "begin onboard"
+    logger.info("begin onboard")
     display.clear_messages()
     display.add_message("Begin Onboard")
     ledOnboard.blink(.1)
@@ -174,7 +177,7 @@ def no_message(message):
     return
 
 def end_onboard(status):
-    print "end onboard: {}".format(status)
+    logger.info("end onboard: {}".format(status))
     display.add_message(status)
     context['onboarding'] = False
     set_state()
@@ -186,7 +189,7 @@ def set_state():
         ledOnboard.off()
 
 def clickOnboard():
-    print "click onboard"
+    logger.info("click onboard")
     if not screenSaver.isActive():
         if context['onboarding']:
             display.clear_messages()
@@ -244,10 +247,10 @@ while True:
     # If screensaver starts, we won't return until it stops
     screenSaver.checkIdle()
 
-    #print "batteryLow: {}".format(batteryLow)
+    #logger.info("batteryLow: {}".format(batteryLow))
     if batteryLow > 0:
         if (not buttonLowBattery.is_set()):
-            print "plugged back in.."
+            logger.info("plugged back in..")
             # plugged back in
             batteryLow = 0
             display.clear_messages()
