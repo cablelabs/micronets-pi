@@ -25,6 +25,10 @@ class SysLogger(Singleton):
                     if message.rstrip() != "":
                             self.logger.log(self.level, message.rstrip())
 
+    def log_except_hook(*exc_info):
+        text = "".join(traceback.format_exception(*exc_info))
+        self._logger.error("Unhandled exception: %s", text)
+
     def __init__(self, filename='__default__', level=logging.INFO):
 
         if filename == '__default__':
@@ -58,16 +62,15 @@ class SysLogger(Singleton):
             self._logger.info("   ")
             self._logger.info("------------------------ Executing {} -------------------------".format(script))
 
-
-        # TODO: Use debug logging level??
+        # capture system errors too
+        sys.excepthook = self.log_except_hook
 
     def logger(self):
         return self._logger;
 
-
 if __name__ == '__main__':
     print "Testing SysLogger"
-    #logger = SysLogger('/tmp/SysLoggerTest.log').logger();
-    logger = SysLogger().logger();
+    logger = SysLogger('/tmp/SysLoggerTest.log').logger();
+    #logger = SysLogger().logger();
     logger.info("Testing INFO logging")
     logger.error("Testing ERROR logging")

@@ -1,4 +1,5 @@
-import sys, time, argparse, logging, atexit, os
+import sys, time, argparse, atexit, os
+import logging
 import subprocess
 from utils.syslogger import SysLogger
 from onboard import *
@@ -20,6 +21,9 @@ TODO:
  - keys should be moved out of config.json - someplace like 
 '''
 
+# Logfile is /tmp/protodpp.log
+logger = SysLogger().logger()
+
 # This is just so onboard.py has an object with add_message.
 class DisplayWrapper(object):
 
@@ -30,7 +34,6 @@ class DisplayWrapper(object):
         add_message(message)
 
 display = DisplayWrapper()
-
 
 import qrcode
 import json
@@ -232,7 +235,8 @@ place_widget(qrcode_frame,0, 0, main_w, full_h, False)
 
 # fireworks window
 fireworks_frame = Frame(window, background="white", borderwidth=0, relief="solid")
-place_widget(fireworks_frame,0, 0, full_w, full_h, False)
+#place_widget(fireworks_frame,0, 0, full_w, full_h, False)
+place_widget(fireworks_frame,0, banner_h, main_w, main_h, False)
 
 # Footer
 footer_t = banner_h + main_h
@@ -261,7 +265,7 @@ def destroy_qrcode():
 
 def clicked_qrcode(null_arg=0):
 
-    print "clicked qrcode"
+    logger.info("clicked qrcode")
 
     # hide qrcode so we can see progress messages
     destroy_qrcode()
@@ -275,7 +279,7 @@ def clicked_qrcode(null_arg=0):
     else:
         add_message("Network connection required")
 
-def display_fireworks():
+def animate_fireworks():
 
     global fireworks_image
 
@@ -292,26 +296,26 @@ def display_fireworks():
 
     show_widget(fireworks_frame)
 
-    while 1:
-        for frame in frames:
-            #canvas.paste(frame)
-            #canvas.show()
-            photo = PIL.ImageTk.PhotoImage(frame)
-            fireworks_image = Label(window, image=photo)
-            place_widget(fireworks_image,0, 0, full_w, full_h)
 
-            fireworks_image['bg'] = fireworks_frame['bg']
-            fireworks_image.saveicon = fireworks_image   # otherwise it disappears
-            fireworks_image.savephoto = photo
+    for frame in frames:
+        #canvas.paste(frame)
+        #canvas.show()
+        photo = PIL.ImageTk.PhotoImage(frame)
+        fireworks_image = Label(window, image=photo)
+        place_widget(fireworks_image,0, banner_h, main_w, main_h)
 
-            time.sleep(0.1)
+        fireworks_image['bg'] = fireworks_frame['bg']
+        #fireworks_image.saveicon = fireworks_image   # otherwise it disappears
+        #fireworks_image.savephoto = photo
+
+        time.sleep(0.1)
 
     hide_widget(fireworks_frame)
 
-def display_qrcode(data):
+def display_fireworks():
+    thr = threading.Thread(target=animate_fireworks, args=()).start()
 
-    #display_fireworks()
-    thr = threading.Thread(target=display_fireworks, args=()).start()
+def display_qrcode(data):
 
     # show parent
     show_widget(qrcode_frame)
@@ -345,7 +349,7 @@ def display_qrcode(data):
 
 
 # Demented python scoping.
-context = {'restoring':False, 'onboarding':False, 'net_display':DISP_SSID}
+context = {'restoring':False, 'onboarding':False, 'net_display':DISP_SSID, 'comcast': True}
 
 def status_message(message):
     add_message(message)
@@ -398,7 +402,7 @@ def save_config():
     fileDir = os.path.dirname(os.path.realpath('__file__'))
     filename = os.path.join(fileDir, '../config/config.json')
     with open(filename, 'w') as outfile:  
-        json.dump(config, outfile)
+        json.dump(config, outfile, sort_keys=True, indent=4, separators=(',', ': '))
 
 def load_config():
     global config
@@ -407,10 +411,10 @@ def load_config():
     try:
         filename = os.path.join(fileDir, '../config/config.json')
         fileData = open(filename).read()
-        #print 'fileData: {}'.format(fileData)
+        #logger.info('fileData: {}'.format(fileData))
         config = json.loads(fileData)
 
-        print "config loaded OK"
+        logger.info("config loaded OK")
 
     except (OSError, IOError, KeyError) as e: # FileNotFoundError does not exist on Python < 3.3
         pass
@@ -449,7 +453,8 @@ def toggle_mode():
     save_config()
 
 def restore_defaults(null_arg=0):
-    print "reset device.."
+    logging.info("reset device..")
+
     clear_messages()
     add_message("reset device..")
     resetDevice(config['mode'] == 'dpp')
@@ -476,7 +481,7 @@ def get_ssid():
 
 def generate_dpp_uri():
 
-    print "** generate_dpp_uri **"
+    logger.info("** generate_dpp_uri **")
 
     mac = os.popen("cat /sys/class/net/wlan0/address").read().strip()
     cmd = "sudo wpa_cli dpp_bootstrap_gen type=qrcode mac={} chan={}/{} key={} info={}".format(
@@ -486,10 +491,10 @@ def generate_dpp_uri():
         config['p256'],
         config['vendorCode'])
 
-    print "cmd: " + cmd
+    logger.info("cmd: " + cmd)
     
     result = os.popen(cmd).read().strip()
-    print result
+    logger.info(result)
 
     id = result.split('\n')[1]
 
@@ -497,25 +502,25 @@ def generate_dpp_uri():
     result = os.popen(cmd).read().strip()
 
     uri = result.split('\n')[1]
-    print "uri: " + uri
+    logger.info("uri: " + uri)
 
     return uri
 
 def dpp_listen():
-    print "** dpp_listen **"
+    logger.info("** dpp_listen **")
     cmd = "sudo wpa_cli dpp_listen {}".format(chan_freqs[config['channel']])
     result = os.popen(cmd).read().strip()
-    print result
+    logger.info(result)
 
 
 def dpp_stop_listen():
-    print "** dpp_stop_listen **"
+    logger.info("** dpp_stop_listen **")
     cmd = "sudo wpa_cli dpp_stop_listen"
     result = os.popen(cmd).read().strip()
-    print result
+    logger.info(result)
 
 def end_onboard(status):
-    print "end onboard: {}".format(status)
+    logger.info("end onboard: {}".format(status))
     add_message(status)
     context['onboarding'] = False
     onboard_button.config(text='Onboard')
@@ -523,7 +528,7 @@ def end_onboard(status):
     set_state()
 
 def begin_onboard():
-    print "begin onboard"
+    logger.info("begin onboard")
     clear_messages()
     add_message("Begin Onboard")
     context['onboarding'] = True
@@ -553,6 +558,9 @@ def onboard_dpp():
     show_widget(cancel_button)
     show_widget(countdown_button)
 
+    #if context['comcast']:
+        # Ensure we start with 
+
     #data = "DPP:C:81/1;I:SUNG;M:6a:00:02:d2:e8:50;K:MDkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDIgACDIBBiMf4W+tukQcNKz5eObkMp3tNPFJRvBhE1sop3K0=;;"
     qrcode_data = generate_dpp_uri()
 
@@ -568,7 +576,7 @@ def onboard_dpp():
     countdown_timer.start()
 
 def onboard_clinic():
-    print "onboard clicked"
+    logger.info("onboard clicked")
     if context['onboarding']:
         clear_messages()
         add_message("Canceling..")
@@ -631,7 +639,7 @@ def reboot(nullarg=0):
     #restartWifi()
 
 def exit_app(nullarg=0):
-    print "exit"
+    logger.info("exit")
     if shutdown_timer != None:
         shutdown_timer.cancel()
     exit()
@@ -642,7 +650,7 @@ def check_shutdown():
     shutdown_timer = None
 
     if (do_shutdown):
-        print "shutting down"
+        logger.info("shutting down")
         shutting_down = True
         subprocess.call("sudo shutdown -h now", shell=True)
         #subprocess.call(['poweroff'], shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -665,7 +673,7 @@ def shutdown_released(nullarg=0):
         if canExit:
             add_message("Restarting Application..")
             #exit_app()
-            print os.popen("sudo systemctl restart lightdm")
+            logger.info(os.popen("sudo systemctl restart lightdm"))
 
         # This restarts the desktop, which restarts the application.
         #add_message("Restarting Application..")
@@ -734,6 +742,15 @@ mode_icon = add_icon(header, 'dpp3.png', 4, 2, 36, 36)
 load_config()
 update_mode()
 
+
+logger.info(config["mode"])
+if config['demo'] == True:
+    logger.info("demo mode")
+    display_fireworks()
+
+#display_fireworks()
+
+
 footer.config(text='')
 #hideLinked()
 #hideWifi()
@@ -787,7 +804,7 @@ def buttonEvent(channel):
     startTime = time.time()
     while GPIO.input(channel) == GPIO.LOW:
         time.sleep(0.02)
-    print "Button #%d pressed for %f seconds." % (channel, time.time() - startTime)
+    logger.info("Button #%d pressed for %f seconds." % (channel, time.time() - startTime))
     #add_message("Button {} pressed for {} seconds".format(channel, time.time() - startTime))
     add_message("button event")
  
