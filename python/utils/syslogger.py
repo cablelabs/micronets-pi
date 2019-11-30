@@ -24,6 +24,9 @@ class SysLogger(Singleton):
                     # Only log if there is a message (not just a new line)
                     if message.rstrip() != "":
                             self.logger.log(self.level, message.rstrip())
+            def flush(self):
+                pass
+
 
     def log_except_hook(*exc_info):
         text = "".join(traceback.format_exception(*exc_info))

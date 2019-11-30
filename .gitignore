@@ -9,6 +9,9 @@ __pycache__/
 # scraps
 boneyard/
 
+# screenshots
+screenshots/
+
 #runtime
 ssh/
 tmp/

@@ -7,7 +7,7 @@ import sys
 import subprocess
 from pathlib import Path
 
-__all__ = ["wpa_reset", "wpa_add_subscriber", "wpa_subscriber_exists"]
+__all__ = ["wpa_reset", "wpa_add_subscriber", "wpa_subscriber_exists", "has_network"]
 
 # exposed methods
 def wpa_reset(all=False):
@@ -92,6 +92,18 @@ def add_network(network, priority):
 			fout.write('    {}'.format(line))
 
 		fout.write('}\n')
+
+# used only to see if a STA has been configured, for display purposes. Probably a better way.
+def has_network():
+	infile = '/etc/wpa_supplicant/wpa_supplicant.conf'
+
+	with open(infile, 'r') as fin:
+		for line in fin:
+			line = line.replace(" ","")
+			if "network=" in line:
+				return True
+
+	return False
 
 if __name__ == '__main__':
 

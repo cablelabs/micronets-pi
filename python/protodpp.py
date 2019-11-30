@@ -1,5 +1,6 @@
 import sys, time, argparse, atexit, os
 import logging
+import datetime
 import subprocess
 from utils.syslogger import SysLogger
 from onboard import *
@@ -9,6 +10,8 @@ from Tkinter import *
 from lib.wpa_supplicant import *
 import PIL.Image
 import PIL.ImageTk
+#import PIL.ImageGrab
+import pyscreenshot as ImageGrab
 from dpp_proxy import *
 
 '''
@@ -97,6 +100,15 @@ default_proxy_username = "grandma"
 default_proxy_password = "grandma"
 default_proxy_device_uid = "AgoNDQcDDgg"
 qrcode_data = None
+demo_mode = False
+demo_status = None
+demo_ssid = None
+demo_wifi_ip = None
+connected_frame = None
+not_connected_frame = None
+frame_count = 0
+splash_image = None
+fireworks_image = None
 
 countdown = 0
 canExit = False
@@ -104,8 +116,11 @@ canExit = False
 chan_freqs = {1:2412, 2:2417, 3:2422, 4:2427, 5:2432, 6:2437, 7:2442, 8:2447, 9:2452, 10:2457, 11:2462, 12:2467, 13:2472, 14:2484}
 
 # New fireworks splash for comcast, displayed after connect.
-fireworks_frame = None
+demo_frame = None
+splash_frame = None
 #fireworks_image = None
+
+splash_active = False
 
 ############################################################################
 # list of BCM channels from RPO.GPIO (printed on the Adafruit PCB next to each button)
@@ -152,14 +167,14 @@ def add_button(index, imagename, callback, callback2=None):
     button.saveicon = icon   # otherwise it disappears
     return button
 
-def add_icon(parent, imagename, x, y, width, height):
+def add_icon(parent, imagename, x, y, width, height, show=True):
     path = os.path.abspath(os.path.join(os.path.dirname(__file__),'images', imagename))
     img = PIL.Image.open(path)
     img = img.resize((width, height),PIL.Image.ANTIALIAS)
     icon = PIL.ImageTk.PhotoImage(img)
     iconFrame = Label(window, image=icon)
     #iconFrame.place(x=x, y=y, width=width, height=height)
-    place_widget(iconFrame, x, y, width, height)
+    place_widget(iconFrame, x, y, width, height, show)
     iconFrame['bg'] = parent['bg']
     iconFrame.saveicon = icon   # otherwise it disappears
     return iconFrame
@@ -170,12 +185,46 @@ def add_icon(parent, imagename, x, y, width, height):
 w, h = window.winfo_screenwidth(), window.winfo_screenheight()
 # use the next line if you also want to get rid of the titlebar
 window.overrideredirect(1)
-#window.geometry("320x240+300+300")
-window.geometry("320x240+0+0")
+
+# if we are running with an external hdmi monitor (i.e. full screen resolution), offset the application window
+# so we can see the title bar.
+
+screen_width = window.winfo_screenwidth()
+screen_height = window.winfo_screenheight()
+
+logger.info("Screen: "+str(screen_width) + " x " + str(screen_height))
+
+main_x = 0
+main_y = 0
+
+if screen_width > 640 and screen_height > 480:
+    main_x = (screen_width-320) / 2
+    main_y = (screen_height-240) / 2
+
+    # temp
+    main_x = 0
+    main_y = 40
+
+window.geometry("320x240+" + str(main_x) + "+" +str(main_y))
 
 font1=("HelveticaNeue-Light", 20, 'normal')
 font2=("HelveticaNeue-Light", 16, 'normal')
 font3=("HelveticaNeue-Light", 12, 'normal')
+
+#Take a screenshot of application window
+def take_screenshot(null_arg=0):
+    # Screenshots directory
+    screenshots_folder = '/etc/micronets/screenshots'
+    if not os.path.exists(screenshots_folder):
+        os.makedirs(screenshots_folder)
+
+    # Filename
+    filename = str(datetime.datetime.now()).split('.')[0].replace(':','.')+".jpg"
+    filepath = screenshots_folder + "/" + filename
+
+    screenshot = ImageGrab.grab(bbox=(main_x, main_y, main_x+320, main_y+240))
+    screenshot.save(filepath)
+
 
 # event handler to toggle the TFT backlight
 def toggle_backlight(channel):
@@ -210,6 +259,10 @@ messages = Text(window, wrap=WORD, background="white", borderwidth=0, relief="so
 messages.place(x=0, y=banner_h, width=main_w, height=main_h)
 
 def toggle_settings(null_arg=0):
+
+    # cancel any animation in progress
+    cancel_animation()
+    
     global settings_visible
     if settings_visible:
         settings.place_forget()
@@ -221,7 +274,7 @@ def toggle_settings(null_arg=0):
         hide_widget(onboard_button)
         hide_widget(refresh_button)
         hide_widget(settings_button)
-        hide_widget(fireworks_frame)
+        hide_widget(demo_frame)
 
 
     settings_visible = not settings_visible
@@ -235,8 +288,30 @@ qrcode_frame = Frame(window, background="white", borderwidth=0, relief="solid")
 place_widget(qrcode_frame,0, 0, main_w, full_h, False)
 
 # fireworks window
-fireworks_frame = Frame(window, background="black", borderwidth=0, relief="solid")
-place_widget(fireworks_frame,0, banner_h, main_w, main_h, False)
+demo_frame = Frame(window, background="white", borderwidth=0, relief="solid")
+place_widget(demo_frame,0, banner_h, main_w, main_h, False)
+
+# splash window
+splash_frame = Frame(window, background="black", borderwidth=0, relief="solid")
+place_widget(splash_frame,0, banner_h, main_w, main_h, True)
+
+# demo status window
+demo_status = Frame(window, background="white", borderwidth=1, relief="solid")
+place_widget(demo_status,0, banner_h, main_w, main_h, False)
+
+# demo status window icons
+l = (main_w - 64) / 2
+t = (full_h - 64) / 2
+
+connected_icon = add_icon(demo_status, 'green-check.png', l, t, 64, 64, False)
+not_connected_icon = add_icon(demo_status, 'no-connection.png', l, t, 64, 64, False)
+
+ssid_label = Label(window, text="", fg="DodgerBlue4", bg="DodgerBlue4")
+
+place_widget(ssid_label,4, t+64+10, main_w-8, 20, False)
+
+ssid_label['bg'] = demo_status['bg']
+
 
 # Footer
 footer_t = banner_h + main_h
@@ -279,68 +354,173 @@ def clicked_qrcode(null_arg=0):
     else:
         add_message("Network connection required")
 
+def cancel_splash(null_arg=0):
+    global frame_count
+    frame_count = 0
+    display_demo_status()
+
+def cancel_fireworks(null_arg=0):
+    global frame_count
+    frame_count = 0
+
 def animate_fireworks():
 
-    #global fireworks_image
+    global demo_ssid, demo_wifi_ip
 
     file_path = os.path.abspath(os.path.join(os.path.dirname(__file__),'images', 'fireworks320-01.gif'))
 
     gif = PIL.Image.open(file_path, 'r')
     frames = []
+    frame_count = config['onboard_animation_seconds']
     try:
         i = 0
-        while i < 60:
+        while i < frame_count:
             i += 1
             frames.append(gif.copy())
             gif.seek(len(frames))
     except EOFError:
         pass
 
-    show_widget(fireworks_frame)
+    # prepare frame to receive images
+    fireworks_image = Label(window, bg = 'black')
+    place_widget(fireworks_image,0, banner_h, main_w, main_h)
+    fireworks_image['bg'] = demo_frame['bg']
+    show_widget(demo_frame)
+    
+    # allow canceling of the animation by touching the image
+    fireworks_image.bind("<Button-1>", cancel_fireworks)
 
-    if False:
-        for frame in frames:
-            photo = PIL.ImageTk.PhotoImage(frame)
-            fireworks_image = Label(window, image=photo)
-            place_widget(fireworks_image,0, banner_h, main_w, main_h)
+    # animate frames
+    frame_count = len(frames)
+    i = 0
+    while i < frame_count:
+    #for frame in frames:
+        frame = frames[i]
+        photo = PIL.ImageTk.PhotoImage(frame)
+        fireworks_image.config(image=photo)
+        fireworks_image.image = photo # prevent from being garbage collected while active
+        time.sleep(0.08)
+        i += 1
 
-            fireworks_image['bg'] = fireworks_frame['bg']
-            time.sleep(0.1)
-
-            fireworks_image.config(image=None)
-
-    if True:
-        fireworks_image = Label(window, bg = 'black')
-        place_widget(fireworks_image,0, banner_h, main_w, main_h)
-        fireworks_image['bg'] = fireworks_frame['bg']
-
-        for frame in frames:
-            photo = PIL.ImageTk.PhotoImage(frame)
-            fireworks_image.config(image=photo)
-            fireworks_image.image = photo
-            time.sleep(0.15)
-
-        #time.sleep(2)
-
-    logger.info("Fireworks done")
-
+    # clean up
     photo = None
 
     hide_widget(fireworks_image)
-    hide_widget(fireworks_frame)
+    #hide_widget(demo_frame)
 
     if fireworks_image:
         fireworks_image.config(image=None)
         fireworks_image.image = None
         fireworks_image['bg'] = None
-        fireworks_image = None
 
+    logger.info("Fireworks done")
     add_message("Fireworks Done")
+
+    display_demo_status()
+
+def animate_splash():
+
+    global frame_count
+
+    splash_active = True
+
+    frame_interval = .05
+    splash_duration = config['splash_animation_seconds']
+    splash_minimum = 5
+    frame_count = int(splash_duration / frame_interval)
+    min_frame_count = int(splash_minimum / frame_interval)
+
+    logger.info("Frame count: "+str(frame_count))
+
+
+    file_path = os.path.abspath(os.path.join(os.path.dirname(__file__),'images', 'earth5.gif'))
+
+    gif = PIL.Image.open(file_path, 'r')
+    frames = []
+    try:
+        while 1:
+            frame = gif.copy()        
+            frame = frame.resize((160, 160), PIL.Image.ANTIALIAS) #The (250, 250) is (height, width)
+            frames.append(frame)
+            gif.seek(len(frames))
+    except EOFError:
+        pass
+
+    # prepare frame to receive images
+    splash_image = Label(window, bg = 'black')
+    place_widget(splash_image,0, banner_h, main_w, main_h)
+    splash_image['bg'] = splash_frame['bg']
+    show_widget(splash_frame)
+
+    # allow canceling of the animation by touching the image
+    splash_image.bind("<Button-1>", cancel_splash)
+
+    # animate frames
+    i = 0
+    #ethernet_displayed = False
+    ethernet_displayed = True
+
+    wifi_ssid = None
+    wifi_ip = None
+
+    while i <= frame_count:
+        index = i % len(frames)
+        photo = PIL.ImageTk.PhotoImage(frames[index])
+        splash_image.config(image=photo)
+        splash_image.image = photo # prevent from being garbage collected while active
+        time.sleep(frame_interval)
+        i += 1
+        #header.config(text=str(i))
+
+        # display ethernet address when starting up, if connected.
+        if not ethernet_displayed:
+            ethernet_ip = get_ethernet_ipaddress()
+            if (ethernet_ip):
+                footer.config(text="ETH: "+ ethernet_ip)
+                ethernet_displayed = True
+
+        # check for wifi connected
+        if not wifi_ssid:
+            wifi_ssid = get_ssid()
+        elif not wifi_ip:
+            wifi_ip = get_wifi_ipaddress()
+        else:
+            # we're connected and online.
+            if i > min_frame_count:
+                # end animation
+                frame_count = 0
+                display_demo_status()
+
+        if i == frame_count:
+            # end of animation and not connected
+            display_demo_status()
+
+    # clean up
+    photo = None
+
+    hide_widget(splash_image)
+    hide_widget(splash_frame)
+    #hide_widget(demo_frame)
+    footer.config(text="")
+
+    if splash_image:
+        splash_image.config(image=None)
+        splash_image.image = None
+        splash_image['bg'] = None
+
+    logger.info("Splash done")
+    add_message("Splash Done")
+    display_demo_status()
 
 def display_fireworks():
     thr = threading.Thread(target=animate_fireworks, args=()).start()
 
+def display_splash():
+    thr = threading.Thread(target=animate_splash, args=()).start()
+
 def display_qrcode(data):
+
+    hide_widget(demo_status)
 
     # show parent
     show_widget(qrcode_frame)
@@ -412,6 +592,8 @@ def update_mode():
         reset_label.config(text="Default WiFi Keys")
         header.config(bg="teal")
     mode_icon['bg'] = header['bg']
+    mode_icon.bind("<Button-1>",take_screenshot)
+
 
 def config_default(key, default, dictionary=None):
 
@@ -452,6 +634,9 @@ def load_config():
     config_default('channel', default_channel)
     config_default('channelClass', default_channel_class)
     config_default('countdown', default_countdown)
+    config_default('demo', True)
+    config_default('splash_animation_seconds', 10)
+    config_default('onboard_animation_seconds', 5)
 
     config_default('dppProxy', {})
     config_default('msoPortalUrl', default_proxy_mso_portal, config['dppProxy'])
@@ -478,6 +663,10 @@ def toggle_mode():
     save_config()
 
 def restore_defaults(null_arg=0):
+
+    # cancel any animation in progress
+    cancel_animation()
+    
     logging.info("reset device..")
 
     clear_messages()
@@ -552,6 +741,77 @@ def end_onboard(status):
 
     set_state()
 
+def cancel_animation():
+    global frame_count
+    frame_count = 0
+
+def display_demo_status():
+
+    demo_ssid = get_ssid()
+    demo_wifi_ip = get_wifi_ipaddress()
+    is_provisioned = has_network()
+
+    #demo_wifi_ip = "192.168.6.66"
+    #demo_wifi_ip = None
+    #demo_ssid = "aunt_sally_gw"
+
+    if demo_ssid:
+        ssid_label.config(text=demo_ssid)
+
+        if demo_wifi_ip:
+            footer.config(text=str(demo_wifi_ip))
+            show_widget(connected_icon)
+        else:
+            footer.config(text="NO IP ADDRESS")
+            show_widget(not_connected_icon)
+
+    else:
+        show_widget(not_connected_icon)
+        if is_provisioned:
+            ssid_label.config(text="NOT CONNECTED")
+        else:
+            ssid_label.config(text="NOT PROVISIONED")
+
+        footer.config(text="")
+
+    show_widget(demo_status)
+    show_widget(ssid_label)
+
+def display_not_connected():
+
+    demo_ssid = get_ssid()
+    demo_wifi_ip = get_wifi_ipaddress()
+
+    demo_wifi_ip = None
+    demo_ssid = "aunt_sally_gw"
+
+    if demo_ssid:
+        ssid_label.config(text=demo_ssid)
+        if not demo_wifi_ip:
+            footer.config(text="NO IP ADDRESS")
+        else:
+            footer.config(text="")
+    else:
+        #ssid_label.config(text="NOT CONNECTED")
+        ssid_label.config(text="NOT PROVISIONED")
+
+    show_widget(demo_status)
+    show_widget(not_connected_icon)
+    show_widget(ssid_label)
+
+    #PIL.ImageGrab().save("screenshot.jpg")
+
+def display_connected():
+    show_widget(demo_status)
+
+    show_widget(demo_status)
+    show_widget(connected_icon)
+    show_widget(ssid_label)
+    ssid_label.config(text=demo_ssid)
+    footer.config(text=demo_wifi_ip)
+    
+    # show not connected icon
+
 def begin_onboard():
     logger.info("begin onboard")
     clear_messages()
@@ -562,15 +822,39 @@ def begin_onboard():
     thr = threading.Thread(target=onboardDevice, args=(newKey, end_onboard, display,)).start()
 
 def onboard_countdown():
-    global countdown
+    global countdown, demo_ssid, demo_wifi_ip
 
     countdown = countdown -1
-    if countdown == 0:
+    #if countdown == 0:
+    if countdown == (config["countdown"] - 10):
         cancel_onboard()
+        if demo_mode:
+            display_demo_status()
     else:
+
+        if demo_mode:
+            demo_ssid = get_ssid()
+            demo_wifi_ip = get_wifi_ipaddress()
+
+            # temp for testing
+            if countdown == (config["countdown"] - 5):
+                demo_ssid = "bangzoom_gateway"
+                #demo_wifi_ip = "192.168.0.66"
+                #pass
+            
+            if demo_ssid and demo_wifi_ip:
+                # Success!
+                cancel_onboard()
+                display_fireworks()
+                return
+
+
         countdown_button.config(text=countdown)
         countdown_timer = threading.Timer(1.0, onboard_countdown)
         countdown_timer.start()
+
+    if countdown == 29:
+        take_screenshot()
 
 def onboard_dpp():
     global countdown, countdown_timer, qrcode_data
@@ -630,6 +914,10 @@ def cancel_onboard(null_arg=0):
 
 
 def onboard(null_arg=0):
+
+    # cancel any animation in progress
+    cancel_animation()
+    
     global onboard_active
 
     if (onboard_active):
@@ -653,7 +941,24 @@ def showWifi():
 def hideWifi():
     wifiIcon.place(x=-40, y=349, width=24, height=24)
 
+def showConnected():
+
+    pass
+
+def hideConnected():
+    pass
+
+def showNotConnected():
+    pass
+
+def hideNotConnected():
+    pass
+
 def cycle(nullarg=0):
+
+    # cancel any animation in progress
+    cancel_animation()
+    
     add_message("Cycling Wifi..")
     thr = threading.Thread(target=restartWifi).start()
 
@@ -681,6 +986,10 @@ def check_shutdown():
         #subprocess.call(['poweroff'], shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
 def shutdown_pressed(nullarg=0):
+
+    # cancel any animation in progress
+    cancel_animation()
+
     global shutdown_timer, do_shutdown
     do_shutdown = True
     shutdown_timer = threading.Timer(3.0, check_shutdown)
@@ -698,7 +1007,8 @@ def shutdown_released(nullarg=0):
         if canExit:
             add_message("Restarting Application..")
             #exit_app()
-            logger.info(os.popen("sudo systemctl restart lightdm"))
+            logger.info("Restarting Application..")
+            os.popen("sudo systemctl restart lightdm")
 
         # This restarts the desktop, which restarts the application.
         #add_message("Restarting Application..")
@@ -718,10 +1028,17 @@ settings_button = add_button(2, 'settings2.png', toggle_settings)
 shutdown_button = add_button(3, 'shutdown.png', shutdown_pressed, shutdown_released)
 
 def shutdown_event(null_arg=0):
+
+    # cancel any animation in progress
+    cancel_animation()
+    
     if GPIO.input(27):
         shutdown_released()
     else:
         shutdown_pressed()
+
+def screenshot():
+    pass
 
 hide_widget(cancel_button)
 hide_widget(countdown_button)
@@ -763,58 +1080,81 @@ done_label.place(x=120, y=120, width=160, height=39)
 done_label.config(font=font3)
 
 mode_icon = add_icon(header, 'dpp3.png', 4, 2, 36, 36)
+mode_icon.bind("<Button-1>",take_screenshot)
 
 load_config()
 update_mode()
 
 
 logger.info(config["mode"])
-if config['demo'] == True:
+if config['demo'] and config['mode'] == 'dpp':
+    demo_mode = True
+
+if demo_mode:
     logger.info("demo mode")
-    display_fireworks()
+    show_widget(demo_frame)
+
+
+    #display_fireworks()
+    display_splash()
+
 
 #display_fireworks()
 
 
 footer.config(text='')
-#hideLinked()
-#hideWifi()
+hideLinked()
+hideWifi()
+
+# setup for screenshots
+def keypress(e):
+    logger.info("KeyPress: "+e.char)
+    if e.char == 's':
+        take_screenshot()
+
+window.bind('<KeyPress>', keypress)
 
 def updateTimer():
-    ssid = get_ssid()
-    wifi_ip = get_wifi_ipaddress()
-    ethernet_ip = get_ethernet_ipaddress()
 
-    if (context['net_display'] == DISP_SSID):
-        footer.config(text=ssid)
-        context['net_display'] = DISP_WIFI_IP
-    elif (context['net_display'] == DISP_WIFI_IP):
-        if (wifi_ip):
-            footer.config(text=wifi_ip)
-        else:
-            footer.config(text="NO IP ADDRESS")
-        context['net_display'] = DISP_ETHERNET_IP
-    else:
-        # We use a wired connection for debug/testing (and for using the configurator proxy (dpp_proxy.py))
-        if (ethernet_ip):
-            footer.config(text="ETH: "+ ethernet_ip)
-            context['net_display'] = DISP_SSID
-        else:
-            # Skip ahead to SSID
+    if not demo_mode:
+        ssid = get_ssid()
+        wifi_ip = get_wifi_ipaddress()
+        ethernet_ip = get_ethernet_ipaddress()
+
+        if (context['net_display'] == DISP_SSID):
             footer.config(text=ssid)
             context['net_display'] = DISP_WIFI_IP
+        elif (context['net_display'] == DISP_WIFI_IP):
+            if (wifi_ip):
+                footer.config(text=wifi_ip)
+            else:
+                footer.config(text="NO IP ADDRESS")
+            context['net_display'] = DISP_ETHERNET_IP
+        else:
+            # We use a wired connection for debug/testing (and for using the configurator proxy (dpp_proxy.py))
+            if (ethernet_ip):
+                footer.config(text="ETH: "+ ethernet_ip)
+                context['net_display'] = DISP_SSID
+            else:
+                # Skip ahead to SSID
+                footer.config(text=ssid)
+                context['net_display'] = DISP_WIFI_IP
 
-    if (ssid == None or ssid == ""):
-        hideWifi()
-        showWifi()
+        if (ssid == None or ssid == ""):
+            hideWifi()
+            #showWifi()
+        else:
+            showWifi()
     else:
-        showWifi()
+
+        pass
+
 
     if wpa_subscriber_exists():
         showLinked()
     else:
         hideLinked()
-        showLinked()
+        #showLinked()
 
     window.after(4000,updateTimer)
 

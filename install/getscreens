@@ -1,0 +1,6 @@
+#!/bin/bash
+
+HOST='protomed1'
+if [ ! -z $1 ]; then HOST=$1; fi
+
+rsync --verbose --force --rsync-path="sudo rsync" $HOST:/etc/micronets/screenshots/* ~/github/micronets/micronets-pi/screenshots
