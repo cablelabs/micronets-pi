@@ -13,6 +13,7 @@ import PIL.ImageTk
 #import PIL.ImageGrab
 import pyscreenshot as ImageGrab
 from dpp_proxy import *
+from dpp_config import Config
 
 '''
 TODO:
@@ -26,6 +27,9 @@ TODO:
 
 # Logfile is /tmp/protodpp.log
 logger = SysLogger().logger()
+
+# Config file
+config = Config()
 
 # This is just so onboard.py has an object with add_message.
 class DisplayWrapper(object):
@@ -85,20 +89,8 @@ settings_button = None
 shutdown_button = None
 qrcode_frame = None
 qrcode_image = None
-config = {}
+#config = {}
 onboard_active = False
-default_key = "MDkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDIgACDIBBiMf4W+tukQcNKz5eObkMp3tNPFJRvBhE1sop3K0="
-default_p256 = "30570201010420777fc55dc51e967c10ec051b91d860b5f1e6c934e48d5daffef98d032c64b170a00a06082a8648ce3d030107a124032200020c804188c7f85beb6e91070d2b3e5e39b90ca77b4d3c5251bc1844d6ca29dcad"
-default_vendor_code = "DAWG"
-default_channel = 1
-default_channel_class = 81
-default_mode = "dpp"
-default_countdown = 30
-# proxy settings are used when simulating the iphone mobile application (click on qrcode)
-default_proxy_mso_portal = "https://mso-portal-api.micronets.in"
-default_proxy_username = "grandma"
-default_proxy_password = "grandma"
-default_proxy_device_uid = "AgoNDQcDDgg"
 qrcode_data = None
 demo_mode = False
 demo_status = None
@@ -210,6 +202,7 @@ window.geometry("320x240+" + str(main_x) + "+" +str(main_y))
 font1=("HelveticaNeue-Light", 20, 'normal')
 font2=("HelveticaNeue-Light", 16, 'normal')
 font3=("HelveticaNeue-Light", 12, 'normal')
+font4=("HelveticaNeue-Light", 18, 'normal')
 
 #Take a screenshot of application window
 def take_screenshot(null_arg=0):
@@ -237,9 +230,14 @@ def toggle_backlight(channel):
         backlight.start(100)
 
 # Header
-header = Label(window, text="MICRONETS", fg="white", bg="DodgerBlue4")
+if not config.get('comcast', False):
+    header = Label(window, text="MICRONETS", fg="white", bg="DodgerBlue4")
+    header.config(font=font1)
+else:
+    header = Label(window, text="  EASY CONNECT DEMO", fg="white", bg="DodgerBlue4")
+    header.config(font=font2)
+
 place_widget(header, 0, 0, full_w, banner_h)
-header.config(font=font1)
 header.bind("<Button-1>",toggle_backlight)
 
 # Header Icon
@@ -301,14 +299,16 @@ place_widget(demo_status,0, banner_h, main_w, main_h, False)
 
 # demo status window icons
 l = (main_w - 64) / 2
-t = (full_h - 64) / 2
+t = ((full_h - 64) / 2) - 8
 
 connected_icon = add_icon(demo_status, 'green-check.png', l, t, 64, 64, False)
 not_connected_icon = add_icon(demo_status, 'no-connection.png', l, t, 64, 64, False)
 
-ssid_label = Label(window, text="", fg="DodgerBlue4", bg="DodgerBlue4")
+ssid_label = Label(window, text="", fg="DodgerBlue4", bg="white")
+psk_label = Label(window, text="", fg="OrangeRed2", bg="white")
 
-place_widget(ssid_label,4, t+64+10, main_w-8, 20, False)
+place_widget(ssid_label,4, t+64+8, main_w-8, 24, False)
+place_widget(psk_label,4, t+64+30, main_w-8, 24, False)
 
 ssid_label['bg'] = demo_status['bg']
 
@@ -318,7 +318,8 @@ footer_t = banner_h + main_h
 footer = Label(window, text="IP: 10.252.232.112", fg="white", bg="gray20")
 #footer.place(x=0, y=footer_t, width=full_w, height=banner_h)
 place_widget(footer, 0, footer_t, full_w, banner_h)
-footer.config(font=font1)
+#ooter.config(font=font1)
+footer.config(font=font2)
 
 # Footer Icon
 wifiIcon_path = os.path.abspath(os.path.join(os.path.dirname(__file__),'images', '58-wifi.png'))
@@ -371,7 +372,7 @@ def animate_fireworks():
 
     gif = PIL.Image.open(file_path, 'r')
     frames = []
-    frame_count = config['onboard_animation_seconds']
+    frame_count = config.get('onboardAnimationSeconds', 5)
     try:
         i = 0
         while i < frame_count:
@@ -425,7 +426,7 @@ def animate_splash():
     splash_active = True
 
     frame_interval = .05
-    splash_duration = config['splash_animation_seconds']
+    splash_duration = config.get('splashAnimationSeconds', 10)
     splash_minimum = 5
     frame_count = int(splash_duration / frame_interval)
     min_frame_count = int(splash_minimum / frame_interval)
@@ -457,8 +458,8 @@ def animate_splash():
 
     # animate frames
     i = 0
-    #ethernet_displayed = False
-    ethernet_displayed = True
+    ethernet_displayed = False
+    #ethernet_displayed = True
 
     wifi_ssid = None
     wifi_ip = None
@@ -581,7 +582,7 @@ def update_mode():
     if mode_icon:
         mode_icon.place_forget()
 
-    if config['mode'] == 'dpp':
+    if config.get('mode') == 'dpp':
         mode_icon = add_icon(header, 'dpp3.png', 4, 2, 36, 36)
         mode_label.config(text="DPP")
         reset_label.config(text="Delete WiFi Keys")
@@ -594,70 +595,12 @@ def update_mode():
     mode_icon['bg'] = header['bg']
     mode_icon.bind("<Button-1>",take_screenshot)
 
-
-def config_default(key, default, dictionary=None):
-
-    global config
-    if dictionary == None:
-        dictionary = config
-    
-    if not dictionary.get(key):
-        dictionary[key] = default
-
-
-def save_config():
-    fileDir = os.path.dirname(os.path.realpath('__file__'))
-    filename = os.path.join(fileDir, '../config/config.json')
-    with open(filename, 'w') as outfile:  
-        json.dump(config, outfile, sort_keys=True, indent=4, separators=(',', ': '))
-
-def load_config():
-    global config
-    fileDir = os.path.dirname(os.path.realpath('__file__'))
-
-    try:
-        filename = os.path.join(fileDir, '../config/config.json')
-        fileData = open(filename).read()
-        #logger.info('fileData: {}'.format(fileData))
-        config = json.loads(fileData)
-
-        logger.info("config loaded OK")
-
-    except (OSError, IOError, KeyError) as e: # FileNotFoundError does not exist on Python < 3.3
-        pass
-    
-    # config defaults
-    config_default('mode', 'dpp')
-    config_default('key', default_key)
-    config_default('p256', default_p256)
-    config_default('vendorCode', default_vendor_code)
-    config_default('channel', default_channel)
-    config_default('channelClass', default_channel_class)
-    config_default('countdown', default_countdown)
-    config_default('demo', True)
-    config_default('splash_animation_seconds', 10)
-    config_default('onboard_animation_seconds', 5)
-
-    config_default('dppProxy', {})
-    config_default('msoPortalUrl', default_proxy_mso_portal, config['dppProxy'])
-    config_default('username', default_proxy_username, config['dppProxy'])
-    config_default('password', default_proxy_password, config['dppProxy'])
-    config_default('deviceModelUID', default_proxy_device_uid, config['dppProxy'])
-
-    #default_proxy_mso_portal = "https://mso-portal-api.micronets.in"
-    #default_proxy_username = grandma
-    #default_proxy_password = grandma
-    #default_proxy_device_uid = "AgoNDQcDDgg"
-
-    # save defaults
-    save_config()
-
 def toggle_mode():
     global config
-    if config['mode'] == 'dpp':
-        config['mode'] = 'clinic'
+    if config.get('mode') == 'dpp':
+        config.set('mode','clinic')
     else:
-        config['mode'] = 'dpp'
+        config.set('mode','dpp')
 
     update_mode()
     save_config()
@@ -671,13 +614,17 @@ def restore_defaults(null_arg=0):
 
     clear_messages()
     add_message("reset device..")
-    resetDevice(config['mode'] == 'dpp')
+    resetDevice(config.get('mode') == 'dpp')
 
 def get_wifi_ipaddress():
     fields = os.popen("ifconfig wlan0 | grep 'inet '").read().strip().split(" ")
     ipaddress = None
     if len(fields) >= 2:
         ipaddress = fields[1]
+
+    # !! testing
+    #ipaddress = "192.168.123.456"
+
     return ipaddress
 
 def get_ethernet_ipaddress():
@@ -691,6 +638,10 @@ def get_ethernet_ipaddress():
 
 def get_ssid():
     ssid = os.popen("iwconfig wlan0 | grep 'ESSID'| awk '{print $4}' | awk -F\\\" '{print $2}'").read().strip()
+
+    # !! testing
+    #ssid = 'grandpa-gw'
+
     return ssid
 
 def generate_dpp_uri():
@@ -700,10 +651,10 @@ def generate_dpp_uri():
     mac = os.popen("cat /sys/class/net/wlan0/address").read().strip()
     cmd = "sudo wpa_cli dpp_bootstrap_gen type=qrcode mac={} chan={}/{} key={} info={}".format(
         get_mac(),
-        config['channelClass'],
-        config['channel'],
-        config['p256'],
-        config['vendorCode'])
+        config.get('channelClass'),
+        config.get('channel'),
+        config.get('p256'),
+        config.get('vendorCode'))
 
     logger.info("cmd: " + cmd)
     
@@ -722,7 +673,7 @@ def generate_dpp_uri():
 
 def dpp_listen():
     logger.info("** dpp_listen **")
-    cmd = "sudo wpa_cli dpp_listen {}".format(chan_freqs[config['channel']])
+    cmd = "sudo wpa_cli dpp_listen {}".format(chan_freqs[config.get('channel')])
     result = os.popen(cmd).read().strip()
     logger.info(result)
 
@@ -757,6 +708,7 @@ def display_demo_status():
 
     if demo_ssid:
         ssid_label.config(text=demo_ssid)
+        psk_label.config(text=get_ssid_psk(demo_ssid))
 
         if demo_wifi_ip:
             footer.config(text=str(demo_wifi_ip))
@@ -767,50 +719,18 @@ def display_demo_status():
 
     else:
         show_widget(not_connected_icon)
+        psk_label.config(text="")
+
         if is_provisioned:
             ssid_label.config(text="NOT CONNECTED")
-        else:
+        elif not config.get('comcast'):
             ssid_label.config(text="NOT PROVISIONED")
 
         footer.config(text="")
 
     show_widget(demo_status)
     show_widget(ssid_label)
-
-def display_not_connected():
-
-    demo_ssid = get_ssid()
-    demo_wifi_ip = get_wifi_ipaddress()
-
-    demo_wifi_ip = None
-    demo_ssid = "aunt_sally_gw"
-
-    if demo_ssid:
-        ssid_label.config(text=demo_ssid)
-        if not demo_wifi_ip:
-            footer.config(text="NO IP ADDRESS")
-        else:
-            footer.config(text="")
-    else:
-        #ssid_label.config(text="NOT CONNECTED")
-        ssid_label.config(text="NOT PROVISIONED")
-
-    show_widget(demo_status)
-    show_widget(not_connected_icon)
-    show_widget(ssid_label)
-
-    #PIL.ImageGrab().save("screenshot.jpg")
-
-def display_connected():
-    show_widget(demo_status)
-
-    show_widget(demo_status)
-    show_widget(connected_icon)
-    show_widget(ssid_label)
-    ssid_label.config(text=demo_ssid)
-    footer.config(text=demo_wifi_ip)
-    
-    # show not connected icon
+    show_widget(psk_label)
 
 def begin_onboard():
     logger.info("begin onboard")
@@ -826,7 +746,7 @@ def onboard_countdown():
 
     countdown = countdown -1
     #if countdown == 0:
-    if countdown == (config["countdown"] - 10):
+    if countdown == (config.get("countdown") - 10):
         cancel_onboard()
         if demo_mode:
             display_demo_status()
@@ -837,7 +757,7 @@ def onboard_countdown():
             demo_wifi_ip = get_wifi_ipaddress()
 
             # temp for testing
-            if countdown == (config["countdown"] - 5):
+            if countdown == (config.get("countdown") - 5):
                 demo_ssid = "bangzoom_gateway"
                 #demo_wifi_ip = "192.168.0.66"
                 #pass
@@ -878,7 +798,7 @@ def onboard_dpp():
     dpp_listen()
 
     # countdown TODO
-    countdown = config["countdown"]
+    countdown = config.get("countdown")
     countdown_button.config(text=countdown)
 
     countdown_timer = threading.Timer(1.0, onboard_countdown)
@@ -905,7 +825,7 @@ def cancel_onboard(null_arg=0):
     show_widget(settings_button)
     hide_widget(cancel_button)
     hide_widget(countdown_button)
-    if config['mode'] == 'dpp':
+    if config.get('mode') == 'dpp':
         if qrcode_image:
             destroy_qrcode()
         dpp_stop_listen()
@@ -923,7 +843,7 @@ def onboard(null_arg=0):
     if (onboard_active):
         cancel_onboard()
     else:
-        if config['mode'] == "dpp":
+        if config.get('mode') == "dpp":
             onboard_dpp()
         else:
             onboard_clinic()
@@ -1082,12 +1002,11 @@ done_label.config(font=font3)
 mode_icon = add_icon(header, 'dpp3.png', 4, 2, 36, 36)
 mode_icon.bind("<Button-1>",take_screenshot)
 
-load_config()
+#load_config()
 update_mode()
 
 
-logger.info(config["mode"])
-if config['demo'] and config['mode'] == 'dpp':
+if config.get('demo', True) and config.get('mode') == 'dpp':
     demo_mode = True
 
 if demo_mode:
@@ -1187,7 +1106,7 @@ GPIO.add_event_detect(23, GPIO.FALLING, callback=toggle_settings, bouncetime=200
 GPIO.add_event_detect(27, GPIO.BOTH, callback=shutdown_event, bouncetime=200)
 
 # turn off cursor (ymmv, sometimes displays edit cursor)
-if not config['showCursor']:
+if not config.get('showCursor', False):
     window.config(cursor="none")
 
 def enableExit():

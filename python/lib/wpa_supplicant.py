@@ -7,7 +7,7 @@ import sys
 import subprocess
 from pathlib import Path
 
-__all__ = ["wpa_reset", "wpa_add_subscriber", "wpa_subscriber_exists", "has_network"]
+__all__ = ["wpa_reset", "wpa_add_subscriber", "wpa_subscriber_exists", "has_network", "get_ssid_psk"]
 
 # exposed methods
 def wpa_reset(all=False):
@@ -87,13 +87,14 @@ def add_network(network, priority):
 		fout.write('')
 		fout.write('network={\n')
 		fout.write('    priority={}\n'.format(priority))
+		fout.write('	ieee80211w=1\n') # required with pmf=2 at top of file
 
 		for line in fin:
 			fout.write('    {}'.format(line))
 
 		fout.write('}\n')
 
-# used only to see if a STA has been configured, for display purposes. Probably a better way.
+# (comcast demo) used only to see if a STA has been configured, for display purposes. Probably a better way.
 def has_network():
 	infile = '/etc/wpa_supplicant/wpa_supplicant.conf'
 
@@ -104,6 +105,32 @@ def has_network():
 				return True
 
 	return False
+
+# (comcast demo) retrieve a semi-obfuscated psk for the connected network
+def get_ssid_psk(ssid):
+
+	return "password1234"
+	infile = '/etc/wpa_supplicant/wpa_supplicant.conf'
+
+	pskstr = "psk="
+	maxpsklen = 16
+
+	with open(infile, 'r') as fin:
+		network_found = False
+		for line in fin:
+			line = line.replace(" ","")
+			if "ssid=\""+ssid+"\"" in line:
+				network_found = True
+				continue
+			if network_found:
+				if pskstr in line:
+					psk = line[line.index(pskstr) + len(pskstr):]
+					if psk:
+						if len(psk) > maxpsklen:
+							psk = psk[:maxpsklen]+"..."
+						return psk
+
+		return "** psk-not-found **"
 
 if __name__ == '__main__':
 
