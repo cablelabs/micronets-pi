@@ -294,7 +294,7 @@ splash_frame = Frame(window, background="black", borderwidth=0, relief="solid")
 place_widget(splash_frame,0, banner_h, main_w, main_h, True)
 
 # demo status window
-demo_status = Frame(window, background="white", borderwidth=1, relief="solid")
+demo_status = Frame(window, background="white", borderwidth=0, relief="solid")
 place_widget(demo_status,0, banner_h, main_w, main_h, False)
 
 # demo status window icons
@@ -312,6 +312,18 @@ place_widget(psk_label,4, t+64+30, main_w-8, 24, False)
 
 ssid_label['bg'] = demo_status['bg']
 
+def demo_show_messages(null_arg=0):
+    hide_widget(demo_status)
+    hide_widget(demo_frame)
+    hide_widget(not_connected_icon)
+    hide_widget(connected_icon)
+    hide_widget(ssid_label)
+    hide_widget(psk_label)
+
+
+demo_status.bind("<Button-1>",demo_show_messages)
+connected_icon.bind("<Button-1>",demo_show_messages)
+not_connected_icon.bind("<Button-1>",demo_show_messages)
 
 # Footer
 footer_t = banner_h + main_h
@@ -415,7 +427,6 @@ def animate_fireworks():
         fireworks_image['bg'] = None
 
     logger.info("Fireworks done")
-    add_message("Fireworks Done")
 
     display_demo_status()
 
@@ -494,6 +505,20 @@ def animate_splash():
 
         if i == frame_count:
             # end of animation and not connected
+            if not has_network():
+                add_message("Not provisioned.")                
+            elif not get_ssid():
+                add_message("Not associated:")
+                stanza = get_network_stanza()
+                for line in stanza:
+                    line = line.replace("\n", "").replace("\t","  ")
+                    if len(line) > 35:
+                        line = line[:35]+'...'
+                    add_message(line)
+            else:
+                add_message("Associated: "+ get_ssid())
+                if not get_wifi_ipaddress():
+                    add_message("No IP address")
             display_demo_status()
 
     # clean up
@@ -510,7 +535,6 @@ def animate_splash():
         splash_image['bg'] = None
 
     logger.info("Splash done")
-    add_message("Splash Done")
     display_demo_status()
 
 def display_fireworks():
@@ -728,9 +752,16 @@ def display_demo_status():
 
         footer.config(text="")
 
+    show_widget(demo_frame)
     show_widget(demo_status)
     show_widget(ssid_label)
     show_widget(psk_label)
+
+def demo_restore_status(null_arg=0):
+    if (demo_mode):
+        display_demo_status()
+
+messages.bind("<Button-1>",demo_restore_status)
 
 def begin_onboard():
     logger.info("begin onboard")
@@ -1077,7 +1108,7 @@ def updateTimer():
 
     window.after(4000,updateTimer)
 
-    if time.time() - last_message_time > 30:
+    if time.time() - last_message_time > config.get('messageTimeoutSeconds'):
         clear_messages()
 
 

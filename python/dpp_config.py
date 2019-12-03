@@ -29,8 +29,8 @@ class Config():
         self.load_config()
         logger.info("load_config:")
         #logger.info(self.dump())
-        #self.set_defaults()
-        #self.save_config()
+        self.set_defaults()
+        self.save_config()
 
     def config_default(self, key, default):
 
@@ -52,8 +52,9 @@ class Config():
         self.config_default('channelClass', default_channel_class)
         self.config_default('countdown', default_countdown)
         self.config_default('demo', True)
-        self.config_default('splash_animation_seconds', 10)
-        self.config_default('onboard_animation_seconds', 5)
+        self.config_default('splashAnimationSeconds', 10)
+        self.config_default('onboardAnimationSeconds', 5)
+        self.config_default('messageTimeoutSeconds', 45)
 
         self.config_default(['dppProxy','msoPortalUrl'], default_proxy_mso_portal)
         self.config_default(['dppProxy','username'], default_proxy_username)

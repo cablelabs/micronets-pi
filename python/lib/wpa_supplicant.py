@@ -7,7 +7,7 @@ import sys
 import subprocess
 from pathlib import Path
 
-__all__ = ["wpa_reset", "wpa_add_subscriber", "wpa_subscriber_exists", "has_network", "get_ssid_psk"]
+__all__ = ["wpa_reset", "wpa_add_subscriber", "wpa_subscriber_exists", "has_network", "get_ssid_psk", "get_network_stanza"]
 
 # exposed methods
 def wpa_reset(all=False):
@@ -105,6 +105,24 @@ def has_network():
 				return True
 
 	return False
+
+def get_network_stanza():
+	stanza = []
+	infile = '/etc/wpa_supplicant/wpa_supplicant.conf'
+
+	capture = False
+	with open(infile, 'r') as fin:
+		
+		for line in fin:
+			
+			if not capture:
+				if "network" in line:
+					capture = True
+
+			if capture:
+				stanza.append(line)
+
+	return stanza
 
 # (comcast demo) retrieve a semi-obfuscated psk for the connected network
 def get_ssid_psk(ssid):
