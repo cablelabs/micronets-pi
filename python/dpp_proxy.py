@@ -28,12 +28,12 @@ def exec_dpp_onboard_proxy(config, mac, dpp_uri, display):
 
 	session = requests.session()
 
-	host = config['dppProxy']['msoPortalUrl']
-	username = config['dppProxy']['username']
-	password = config['dppProxy']['password']
-	model_uid = config['dppProxy']['deviceModelUID']
-	vendor_code = config['vendorCode']
-	pubkey = config['key']
+	host = config.get(['dppProxy','msoPortalUrl'])
+	username = config.get(['dppProxy','username'])
+	password = config.get(['dppProxy','password'])
+	model_uid = config.get(['dppProxy','deviceModelUID'])
+	vendor_code = config.get('vendorCode')
+	pubkey = config.get('key')
 	role = "sta"
 
 	# Login
@@ -44,10 +44,12 @@ def exec_dpp_onboard_proxy(config, mac, dpp_uri, display):
 
 	reqBody = {'username': username, 'password': password}
 	data = json.dumps(reqBody)
+	logger.info("Body: "+ data)
 	response = session.post(url, data = data, headers = headers)
 
 	if response.status_code != 200 and response.status_code != 201:
 		display.add_message("Login failed: {}".format(response.status_code))
+		logger.error("Login failed: {}".format(response.status_code))
 		return
 
 	display.add_message("Login succeeded")
@@ -109,6 +111,8 @@ def exec_dpp_onboard_proxy(config, mac, dpp_uri, display):
 	reqBody["device"]["manufacturer"] = mfg_name
 
 	data = json.dumps(reqBody)
+
+	logger.info("Onboard message: "+data)
 	response = session.post(url, data = data, headers = headers)
 
 	if response.status_code != 200 and response.status_code != 201:
@@ -119,6 +123,8 @@ def exec_dpp_onboard_proxy(config, mac, dpp_uri, display):
 
 	# wait for status to accumulate
 	#time.sleep(5)
+	# status seems to be broken
+'''
 	url = makeURL(host, 'status')
 	logger.info("Status: " + url)
 
@@ -143,6 +149,7 @@ def exec_dpp_onboard_proxy(config, mac, dpp_uri, display):
 		return
 
 	display.add_message("Logout succeeded")
+'''
 
 def dpp_onboard_proxy(config, mac, uri, display):
 	try:

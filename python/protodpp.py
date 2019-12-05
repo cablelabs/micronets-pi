@@ -110,8 +110,6 @@ chan_freqs = {1:2412, 2:2417, 3:2422, 4:2427, 5:2432, 6:2437, 7:2442, 8:2447, 9:
 # New fireworks splash for comcast, displayed after connect.
 demo_frame = None
 splash_frame = None
-#fireworks_image = None
-
 splash_active = False
 
 ############################################################################
@@ -299,16 +297,18 @@ place_widget(demo_status,0, banner_h, main_w, main_h, False)
 
 # demo status window icons
 l = (main_w - 64) / 2
-t = ((full_h - 64) / 2) - 8
+#t = ((full_h - 64) / 2) - 8
+t = ((full_h - 64) / 2)
 
 connected_icon = add_icon(demo_status, 'green-check.png', l, t, 64, 64, False)
 not_connected_icon = add_icon(demo_status, 'no-connection.png', l, t, 64, 64, False)
 
 ssid_label = Label(window, text="", fg="DodgerBlue4", bg="white")
-psk_label = Label(window, text="", fg="OrangeRed2", bg="white")
+#psk_label = Label(window, text="", fg="OrangeRed2", bg="white")
 
-place_widget(ssid_label,4, t+64+8, main_w-8, 24, False)
-place_widget(psk_label,4, t+64+30, main_w-8, 24, False)
+place_widget(ssid_label,4, t+64+10, main_w-8, 24, False)
+#place_widget(ssid_label,4, t+64+8, main_w-8, 24, False)
+#place_widget(psk_label,4, t+64+30, main_w-8, 24, False)
 
 ssid_label['bg'] = demo_status['bg']
 
@@ -318,7 +318,7 @@ def demo_show_messages(null_arg=0):
     hide_widget(not_connected_icon)
     hide_widget(connected_icon)
     hide_widget(ssid_label)
-    hide_widget(psk_label)
+    #hide_widget(psk_label)
 
 
 demo_status.bind("<Button-1>",demo_show_messages)
@@ -327,7 +327,7 @@ not_connected_icon.bind("<Button-1>",demo_show_messages)
 
 # Footer
 footer_t = banner_h + main_h
-footer = Label(window, text="IP: 10.252.232.112", fg="white", bg="gray20")
+footer = Label(window, text="", fg="white", bg="gray20")
 #footer.place(x=0, y=footer_t, width=full_w, height=banner_h)
 place_widget(footer, 0, footer_t, full_w, banner_h)
 #ooter.config(font=font1)
@@ -357,7 +357,10 @@ def clicked_qrcode(null_arg=0):
 
     # hide qrcode so we can see progress messages
     destroy_qrcode()
+    if demo_mode:
+        demo_show_messages()
 
+    clear_messages()
     add_message("Clicked QRCode")
     
     # ensure we are connected to a network (wifi or ethernet)
@@ -384,7 +387,11 @@ def animate_fireworks():
 
     gif = PIL.Image.open(file_path, 'r')
     frames = []
-    frame_count = config.get('onboardAnimationSeconds', 5)
+
+    frame_interval = .05
+    fireworks_duration = config.get('onboardAnimationSeconds', 5)
+    frame_count = int(fireworks_duration / frame_interval)
+
     try:
         i = 0
         while i < frame_count:
@@ -403,6 +410,7 @@ def animate_fireworks():
     # allow canceling of the animation by touching the image
     fireworks_image.bind("<Button-1>", cancel_fireworks)
 
+    hide_widget(splash_frame)
     # animate frames
     frame_count = len(frames)
     i = 0
@@ -412,7 +420,7 @@ def animate_fireworks():
         photo = PIL.ImageTk.PhotoImage(frame)
         fireworks_image.config(image=photo)
         fireworks_image.image = photo # prevent from being garbage collected while active
-        time.sleep(0.08)
+        time.sleep(frame_interval)
         i += 1
 
     # clean up
@@ -426,9 +434,23 @@ def animate_fireworks():
         fireworks_image.image = None
         fireworks_image['bg'] = None
 
-    logger.info("Fireworks done")
 
+    add_connected_messages()
     display_demo_status()
+
+def add_connected_messages():
+
+    clear_messages()
+
+    add_message("")
+    add_message("")
+    add_message("-- Connection Succeeded! --")
+    add_message("")
+    add_message("   SSID: "+ get_ssid())
+    add_message("")
+    add_message("   PASS: "+ get_ssid_psk(get_ssid()))
+    add_message("")
+    add_message("   ADDR: "+ get_wifi_ipaddress())
 
 def animate_splash():
 
@@ -502,12 +524,14 @@ def animate_splash():
                 # end animation
                 frame_count = 0
                 display_demo_status()
+                add_connected_messages()
 
         if i == frame_count:
             # end of animation and not connected
             if not has_network():
                 add_message("Not provisioned.")                
             elif not get_ssid():
+                clear_messages()
                 add_message("Not associated:")
                 stanza = get_network_stanza()
                 for line in stanza:
@@ -538,6 +562,7 @@ def animate_splash():
     display_demo_status()
 
 def display_fireworks():
+    add_message("start fireworks")
     thr = threading.Thread(target=animate_fireworks, args=()).start()
 
 def display_splash():
@@ -546,6 +571,9 @@ def display_splash():
 def display_qrcode(data):
 
     hide_widget(demo_status)
+    hide_widget(not_connected_icon)
+    hide_widget(connected_icon)
+
 
     # show parent
     show_widget(qrcode_frame)
@@ -722,40 +750,44 @@ def cancel_animation():
 
 def display_demo_status():
 
-    demo_ssid = get_ssid()
-    demo_wifi_ip = get_wifi_ipaddress()
+    ssid = get_ssid()
+    wifi_ip = get_wifi_ipaddress()
     is_provisioned = has_network()
+    hide_widget(connected_icon)
+    hide_widget(not_connected_icon)
+    ssid_label.config(text="")
 
-    #demo_wifi_ip = "192.168.6.66"
-    #demo_wifi_ip = None
-    #demo_ssid = "aunt_sally_gw"
+    footer.config(text="")
 
-    if demo_ssid:
-        ssid_label.config(text=demo_ssid)
-        psk_label.config(text=get_ssid_psk(demo_ssid))
+    if ssid:
+        ssid_label.config(text=ssid)
+        #psk_label.config(text=get_ssid_psk(demo_ssid))
 
-        if demo_wifi_ip:
-            footer.config(text=str(demo_wifi_ip))
+        if wifi_ip:
+            if not config.get('comcast'):
+                footer.config(text=str(wifi_ip))
             show_widget(connected_icon)
         else:
-            footer.config(text="NO IP ADDRESS")
+            if not config.get('comcast'):
+                footer.config(text="NO IP ADDRESS")
             show_widget(not_connected_icon)
 
     else:
         show_widget(not_connected_icon)
-        psk_label.config(text="")
+        #psk_label.config(text="")
 
         if is_provisioned:
             ssid_label.config(text="NOT CONNECTED")
-        elif not config.get('comcast'):
-            ssid_label.config(text="NOT PROVISIONED")
-
-        footer.config(text="")
+        else:
+            if config.get('comcast'):
+                ssid_label.config(text="NOT CONNECTED")
+            else:
+                ssid_label.config(text="NOT PROVISIONED")
 
     show_widget(demo_frame)
     show_widget(demo_status)
     show_widget(ssid_label)
-    show_widget(psk_label)
+    #show_widget(psk_label)
 
 def demo_restore_status(null_arg=0):
     if (demo_mode):
@@ -776,25 +808,24 @@ def onboard_countdown():
     global countdown, demo_ssid, demo_wifi_ip
 
     countdown = countdown -1
-    #if countdown == 0:
-    if countdown == (config.get("countdown") - 10):
+    if countdown == 0:
+    #if countdown == (config.get("countdown") - 10):
         cancel_onboard()
         if demo_mode:
             display_demo_status()
     else:
 
         if demo_mode:
-            demo_ssid = get_ssid()
-            demo_wifi_ip = get_wifi_ipaddress()
+            ssid = get_ssid()
+            wifi_ip = get_wifi_ipaddress()
 
-            # temp for testing
-            if countdown == (config.get("countdown") - 5):
-                demo_ssid = "bangzoom_gateway"
-                #demo_wifi_ip = "192.168.0.66"
-                #pass
-            
-            if demo_ssid and demo_wifi_ip:
+            if ssid and wifi_ip:
                 # Success!
+                #display_demo_status()
+                hide_widget(not_connected_icon)
+                hide_widget(connected_icon)
+                hide_widget(ssid_label)
+                show_widget(splash_frame)
                 cancel_onboard()
                 display_fireworks()
                 return
@@ -803,9 +834,6 @@ def onboard_countdown():
         countdown_button.config(text=countdown)
         countdown_timer = threading.Timer(1.0, onboard_countdown)
         countdown_timer.start()
-
-    if countdown == 29:
-        take_screenshot()
 
 def onboard_dpp():
     global countdown, countdown_timer, qrcode_data
@@ -817,6 +845,15 @@ def onboard_dpp():
     hide_widget(settings_button)
     show_widget(cancel_button)
     show_widget(countdown_button)
+
+    if demo_mode:
+        cmd = "sudo wpa_cli disconnect"
+        logger.info("cmd: " + cmd)
+        
+        result = os.popen(cmd).read().strip()
+        logger.info(result)
+        wpa_reset(True)
+
 
     #if context['comcast']:
         # Ensure we start with 
@@ -863,6 +900,8 @@ def cancel_onboard(null_arg=0):
     if countdown_timer != None:
         countdown_timer.cancel()
 
+    onboard_active = False
+
 
 def onboard(null_arg=0):
 
@@ -878,7 +917,7 @@ def onboard(null_arg=0):
             onboard_dpp()
         else:
             onboard_clinic()
-    onboard_active = not onboard_active
+    #onboard_active = not onboard_active
 
 def showLinked():
     linkedIcon.place(x=340, y=29, width=24, height=24)
@@ -987,9 +1026,6 @@ def shutdown_event(null_arg=0):
         shutdown_released()
     else:
         shutdown_pressed()
-
-def screenshot():
-    pass
 
 hide_widget(cancel_button)
 hide_widget(countdown_button)
@@ -1108,8 +1144,9 @@ def updateTimer():
 
     window.after(4000,updateTimer)
 
-    if time.time() - last_message_time > config.get('messageTimeoutSeconds'):
-        clear_messages()
+    if not config.get('comcast'):
+        if time.time() - last_message_time > config.get('messageTimeoutSeconds'):
+            clear_messages()
 
 
 updateTimer()

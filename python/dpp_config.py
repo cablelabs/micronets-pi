@@ -167,4 +167,6 @@ if __name__ == '__main__':
 
     logger.info("comcast: "+str(_config.get("comcast")))
 
+    logger.info(_config.get(['dppProxy','msoPortalUrl']))
+
 

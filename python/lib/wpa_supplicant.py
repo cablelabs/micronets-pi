@@ -29,10 +29,14 @@ def wpa_reset(all=False):
 	f.close();
 
 	# add default networks
-	all = True
+	# all = True
 	if not all:
 		add_network('hotspot', -1)
 		add_network('default', -2)
+
+	cmd = "sudo wpa_cli reconfigure"
+	os.popen(cmd)
+
 
 
 def wpa_subscriber_exists():
@@ -127,7 +131,7 @@ def get_network_stanza():
 # (comcast demo) retrieve a semi-obfuscated psk for the connected network
 def get_ssid_psk(ssid):
 
-	return "password1234"
+	#return "password1234"
 	infile = '/etc/wpa_supplicant/wpa_supplicant.conf'
 
 	pskstr = "psk="
