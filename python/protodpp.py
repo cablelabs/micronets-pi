@@ -780,7 +780,8 @@ def display_demo_status():
     footer.config(text="")
 
     if ssid:
-        ssid_label.config(text=ssid)
+        if not config.get('comcast'):
+            ssid_label.config(text=ssid)
         #psk_label.config(text=get_ssid_psk(demo_ssid))
 
         if wifi_ip:
