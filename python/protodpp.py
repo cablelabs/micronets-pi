@@ -782,7 +782,8 @@ def display_demo_status():
     if ssid:
         if not config.get('comcast'):
             ssid_label.config(text=ssid)
-        #psk_label.config(text=get_ssid_psk(demo_ssid))
+        else:
+            ssid_label.config(text="CONNECTED")
 
         if wifi_ip:
             if not config.get('comcast'):
