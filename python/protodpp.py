@@ -13,7 +13,7 @@ import PIL.ImageTk
 #import PIL.ImageGrab
 import pyscreenshot as ImageGrab
 from dpp_proxy import *
-from dpp_config import Config
+from proto_config import Config
 
 '''
 TODO:
@@ -105,6 +105,8 @@ fireworks_image = None
 countdown = 0
 canExit = False
 
+animation_frames = None
+
 chan_freqs = {1:2412, 2:2417, 3:2422, 4:2427, 5:2432, 6:2437, 7:2442, 8:2447, 9:2452, 10:2457, 11:2462, 12:2467, 13:2472, 14:2484}
 
 # New fireworks splash for comcast, displayed after connect.
@@ -174,7 +176,6 @@ def add_icon(parent, imagename, x, y, width, height, show=True):
 
 w, h = window.winfo_screenwidth(), window.winfo_screenheight()
 # use the next line if you also want to get rid of the titlebar
-window.overrideredirect(1)
 
 # if we are running with an external hdmi monitor (i.e. full screen resolution), offset the application window
 # so we can see the title bar.
@@ -187,13 +188,15 @@ logger.info("Screen: "+str(screen_width) + " x " + str(screen_height))
 main_x = 0
 main_y = 0
 
-if screen_width > 640 and screen_height > 480:
-    main_x = (screen_width-320) / 2
-    main_y = (screen_height-240) / 2
+if screen_width >= 640 and screen_height >= 480:
 
-    # temp
-    main_x = 0
+    # External monitor/VNC
+    main_x = 40
     main_y = 40
+else:
+    window.config(cursor="none")
+    window.overrideredirect(1)
+
 
 window.geometry("320x240+" + str(main_x) + "+" +str(main_y))
 
@@ -204,6 +207,7 @@ font4=("HelveticaNeue-Light", 18, 'normal')
 
 #Take a screenshot of application window
 def take_screenshot(null_arg=0):
+
     # Screenshots directory
     screenshots_folder = '/etc/micronets/screenshots'
     if not os.path.exists(screenshots_folder):
@@ -265,13 +269,14 @@ def toggle_settings(null_arg=0):
         show_widget(onboard_button)
         show_widget(refresh_button)
         show_widget(settings_button)
+        if demo_mode:
+            display_demo_status()
     else:
+        hide_demo_status()
         settings.place(x=0, y=banner_h, width=main_w, height=main_h)
         hide_widget(onboard_button)
         hide_widget(refresh_button)
         hide_widget(settings_button)
-        hide_widget(demo_frame)
-
 
     settings_visible = not settings_visible
 
@@ -351,6 +356,13 @@ def destroy_qrcode():
     hide_widget(qrcode_image)
     qrcode_image.place_forget()
 
+def hide_demo_status():
+    hide_widget(demo_status)
+    hide_widget(demo_frame)
+    hide_widget(not_connected_icon)
+    hide_widget(connected_icon)
+    hide_widget(ssid_label)    
+
 def clicked_qrcode(null_arg=0):
 
     logger.info("clicked qrcode")
@@ -379,14 +391,14 @@ def cancel_fireworks(null_arg=0):
     global frame_count
     frame_count = 0
 
-def animate_fireworks():
+def preload_fireworks():
 
-    global demo_ssid, demo_wifi_ip
+    global animation_frames
 
     file_path = os.path.abspath(os.path.join(os.path.dirname(__file__),'images', 'fireworks320-01.gif'))
 
     gif = PIL.Image.open(file_path, 'r')
-    frames = []
+    animation_frames = []
 
     frame_interval = .05
     fireworks_duration = config.get('onboardAnimationSeconds', 5)
@@ -396,10 +408,16 @@ def animate_fireworks():
         i = 0
         while i < frame_count:
             i += 1
-            frames.append(gif.copy())
-            gif.seek(len(frames))
+            animation_frames.append(gif.copy())
+            gif.seek(len(animation_frames))
     except EOFError:
         pass
+
+def animate_fireworks():
+
+    frame_interval = .05
+
+    global demo_ssid, demo_wifi_ip, animation_frames
 
     # prepare frame to receive images
     fireworks_image = Label(window, bg = 'black')
@@ -412,11 +430,11 @@ def animate_fireworks():
 
     hide_widget(splash_frame)
     # animate frames
-    frame_count = len(frames)
+    frame_count = len(animation_frames)
     i = 0
     while i < frame_count:
     #for frame in frames:
-        frame = frames[i]
+        frame = animation_frames[i]
         photo = PIL.ImageTk.PhotoImage(frame)
         fireworks_image.config(image=photo)
         fireworks_image.image = photo # prevent from being garbage collected while active
@@ -562,6 +580,7 @@ def animate_splash():
     display_demo_status()
 
 def display_fireworks():
+    hide_demo_status()
     add_message("start fireworks")
     thr = threading.Thread(target=animate_fireworks, args=()).start()
 
@@ -666,6 +685,7 @@ def restore_defaults(null_arg=0):
 
     clear_messages()
     add_message("reset device..")
+    
     resetDevice(config.get('mode') == 'dpp')
 
 def get_wifi_ipaddress():
@@ -805,13 +825,13 @@ def begin_onboard():
     thr = threading.Thread(target=onboardDevice, args=(newKey, end_onboard, display,)).start()
 
 def onboard_countdown():
-    global countdown, demo_ssid, demo_wifi_ip
+    global countdown, demo_ssid, demo_wifi_ip, onboard_active
 
     countdown = countdown -1
     if countdown == 0:
-    #if countdown == (config.get("countdown") - 10):
         cancel_onboard()
         if demo_mode:
+            destroy_qrcode()
             display_demo_status()
     else:
 
@@ -832,8 +852,9 @@ def onboard_countdown():
 
 
         countdown_button.config(text=countdown)
-        countdown_timer = threading.Timer(1.0, onboard_countdown)
-        countdown_timer.start()
+        if onboard_active:
+            countdown_timer = threading.Timer(1.0, onboard_countdown)
+            countdown_timer.start()
 
 def onboard_dpp():
     global countdown, countdown_timer, qrcode_data
@@ -847,11 +868,21 @@ def onboard_dpp():
     show_widget(countdown_button)
 
     if demo_mode:
-        cmd = "sudo wpa_cli disconnect"
-        logger.info("cmd: " + cmd)
-        
-        result = os.popen(cmd).read().strip()
-        logger.info(result)
+
+        # this is causing the logger to infinite loop
+
+        '''
+        try:
+            cmd = "sudo wpa_cli disconnect"
+            logger.info("cmd: " + cmd)
+            
+            result = os.popen(cmd).read().strip()
+            logger.info(result)
+            pass
+        except Exception as e:
+            #raise e
+            pass
+        '''
         wpa_reset(True)
 
 
@@ -885,6 +916,8 @@ def onboard_clinic():
         context['onboarding'] = True
 
 def cancel_onboard(null_arg=0):
+    global onboard_active
+
     show_widget(header)
     show_widget(footer)
     show_widget(mode_icon)
@@ -905,6 +938,7 @@ def cancel_onboard(null_arg=0):
 
 def onboard(null_arg=0):
 
+
     # cancel any animation in progress
     cancel_animation()
     
@@ -912,11 +946,17 @@ def onboard(null_arg=0):
 
     if (onboard_active):
         cancel_onboard()
+        if demo_mode:
+            destroy_qrcode()
+            display_demo_status()
+
     else:
         if config.get('mode') == "dpp":
             onboard_dpp()
         else:
             onboard_clinic()
+        onboard_active = True
+
     #onboard_active = not onboard_active
 
 def showLinked():
@@ -1080,13 +1120,8 @@ if demo_mode:
     logger.info("demo mode")
     show_widget(demo_frame)
 
-
-    #display_fireworks()
+    preload_fireworks()
     display_splash()
-
-
-#display_fireworks()
-
 
 footer.config(text='')
 hideLinked()
@@ -1174,8 +1209,8 @@ GPIO.add_event_detect(23, GPIO.FALLING, callback=toggle_settings, bouncetime=200
 GPIO.add_event_detect(27, GPIO.BOTH, callback=shutdown_event, bouncetime=200)
 
 # turn off cursor (ymmv, sometimes displays edit cursor)
-if not config.get('showCursor', False):
-    window.config(cursor="none")
+#if not config.get('showCursor', False):
+#    window.config(cursor="none")
 
 def enableExit():
     global canExit

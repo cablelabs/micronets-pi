@@ -34,10 +34,8 @@ def wpa_reset(all=False):
 		add_network('hotspot', -1)
 		add_network('default', -2)
 
-	cmd = "sudo wpa_cli reconfigure"
-	os.popen(cmd)
-
-
+	#cmd = "sudo wpa_cli reconfigure"
+	#os.popen(cmd)
 
 def wpa_subscriber_exists():
 	certFile = Path("/etc/micronets/networks/subscriber/wifi.crt")

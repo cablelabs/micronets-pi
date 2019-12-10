@@ -1,6 +1,7 @@
 import os
 import json
 from utils.syslogger import SysLogger
+from utils.singleton import Singleton
 
 # Logfile is /tmp/protodpp.log
 logger = SysLogger().logger()
@@ -21,7 +22,7 @@ default_proxy_device_uid = "AgoNDQcDDgg"
 folder = os.path.dirname(os.path.realpath('__file__'))
 filename = os.path.join(folder, '../config/config.json')
 
-class Config():
+class Config(Singleton):
 
     def __init__(self):
 
@@ -55,6 +56,8 @@ class Config():
         self.config_default('splashAnimationSeconds', 10)
         self.config_default('onboardAnimationSeconds', 5)
         self.config_default('messageTimeoutSeconds', 45)
+        self.config_default('wifiAdapter', 'wlan0')
+        self.config_default('ethernetAdapter', 'eth0')
 
         self.config_default(['dppProxy','msoPortalUrl'], default_proxy_mso_portal)
         self.config_default(['dppProxy','username'], default_proxy_username)

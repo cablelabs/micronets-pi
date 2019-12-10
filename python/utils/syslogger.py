@@ -28,11 +28,14 @@ class SysLogger(Singleton):
                 pass
 
 
-    def log_except_hook(*exc_info):
-        text = "".join(traceback.format_exception(*exc_info))
-        self._logger.error("Unhandled exception: %s", text)
+    #def log_except_hook(self, *exc_info):
+    #    text = "".join(traceback.format_exception(*exc_info))
+    #    #text = "nothin else.."
+    #    self._logger.error("Unhandled exception: %s", text)
 
     def __init__(self, filename='__default__', level=logging.INFO):
+
+        # broken. disable for now
 
         if filename == '__default__':
             imgFile = sys.argv[0].rsplit('/',1)[-1] #may be filename or filename.py
@@ -40,6 +43,14 @@ class SysLogger(Singleton):
             if len(tokens) == 2:
                 imgFile = tokens[-2]
             filename = "/tmp/{}".format(imgFile) + ".log"
+
+
+        filename = '/etc/micronets/protodpp.log'
+        self.fd = open(filename, 'a+')
+
+        # !!!!!!!!!!!!!!!!!!!!!!!!!
+        return
+
 
         # Configure logging to log to a file, making a new file at midnight and keeping the last 3 day's data
         # Give the logger a unique name (good practice)
@@ -57,6 +68,7 @@ class SysLogger(Singleton):
 
         # Replace stdout with logging to file at INFO level
         sys.stdout = self.OStreamLogger(self._logger, logging.INFO)
+
         # Replace stderr with logging to file at ERROR level
         sys.stderr = self.OStreamLogger(self._logger, logging.ERROR)
 
@@ -66,10 +78,17 @@ class SysLogger(Singleton):
             self._logger.info("------------------------ Executing {} -------------------------".format(script))
 
         # capture system errors too
-        sys.excepthook = self.log_except_hook
+        #sys.excepthook = self.log_except_hook
+
+    def info(self, text):
+        self.fd.write(text + "\n")
+
+    def error(self, text):
+        self.fd.write(text + "\n")
 
     def logger(self):
-        return self._logger;
+        #return self._logger;
+        return self
 
 if __name__ == '__main__':
     print "Testing SysLogger"
